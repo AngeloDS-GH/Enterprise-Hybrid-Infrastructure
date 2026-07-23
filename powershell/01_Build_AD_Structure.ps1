@@ -54,3 +54,7 @@ foreach ($u in $users) {
 
     Add-ADGroupMember -Identity $u.Group -Members $sam
 }
+
+
+# Add UPN Suffix to forest for hybrid preparation (Entra ID)
+Get-ADForest | Set-ADForest -UPNSuffixes @{Add="dmontech.com"}
