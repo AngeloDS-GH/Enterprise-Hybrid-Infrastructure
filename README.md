@@ -23,8 +23,8 @@
 
 ## 🗺️ Version Roadmap
 - [x] **v0.1:** PHASE 0 — Planning, corporate profile, and repository framework setup.
-- [ ] **v0.2:** PHASE 1 — On-Premises Active Directory Infrastructure.
-- [ ] **v0.3:** PHASE 2 & 3 — Cloud Identity (Entra ID, Hybrid Sync & Zero Trust).
+- [x] **v0.2:** PHASE 1 — On-Premises Active Directory Infrastructure.
+- [x] **v0.3:** PHASE 2 & 3 — Cloud Identity (Entra ID, Hybrid Sync & Zero Trust).
 - [ ] **v0.4:** PHASE 4 — Device Management with Microsoft Intune.
 - [ ] **v0.5:** PHASE 5, 6 & 7 — Azure Networking, Compute & Storage.
 - [ ] **v0.6:** PHASE 8, 9 & 10 — Advanced Security, Monitoring, and Backup.
