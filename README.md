@@ -1,6 +1,6 @@
 # 🏢 Enterprise Hybrid Infrastructure — DmonTech
 
-![Project Version](https://img.shields.io/badge/version-v0.1--planning-blue)
+![Project Version](https://img.shields.io/badge/version-v0.5--Azure-blue)
 ![Architecture](https://img.shields.io/badge/Architecture-Hybrid--Cloud-orange)
 ![Security](https://img.shields.io/badge/Model-Zero%20Trust-green)
 
