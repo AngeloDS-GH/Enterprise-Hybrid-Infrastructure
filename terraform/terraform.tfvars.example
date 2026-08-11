@@ -1,0 +1,104 @@
+# ============================================================
+# DmonTech Enterprise Hybrid Infrastructure
+# Example Terraform Variables
+# ============================================================
+#
+# Copy this file and rename it to:
+#
+# terraform.tfvars
+#
+# Then replace the example values with values appropriate
+# for your Azure environment.
+#
+# IMPORTANT:
+# Never commit terraform.tfvars if it contains sensitive
+# or environment-specific information.
+# ============================================================
+
+
+# ============================================================
+# Azure Subscription
+# ============================================================
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+
+# ============================================================
+# General Configuration
+# ============================================================
+
+location     = "East US 2"
+environment  = "prod"
+project_name = "dmontech"
+
+
+# ============================================================
+# Resource Groups
+# ============================================================
+
+hub_resource_group_name   = "rg-dmontech-net-prod-01"
+spoke_resource_group_name = "rg-spoke-prod-01"
+
+
+# ============================================================
+# Hub Network
+# ============================================================
+
+hub_vnet_name      = "vnet-hub-prod-01"
+hub_address_space  = ["10.0.0.0/16"]
+
+azure_firewall_subnet_prefix            = "10.0.1.0/26"
+azure_firewall_management_subnet_prefix = "10.0.1.64/26"
+gateway_subnet_prefix                   = "10.0.0.0/27"
+
+
+# ============================================================
+# Spoke Network
+# ============================================================
+
+spoke_vnet_name     = "vnet-spk-workloads-01"
+spoke_address_space = ["10.1.0.0/16"]
+
+workload_subnet_name   = "snet-app-01"
+workload_subnet_prefix = "10.1.1.0/24"
+
+application_gateway_subnet_name   = "snet-appgw-01"
+application_gateway_subnet_prefix = "10.1.2.0/24"
+
+
+# ============================================================
+# Network Security
+# ============================================================
+
+workload_nsg_name      = "nsg-app-prod-01"
+spoke_route_table_name = "rt-spoke-to-hub-01"
+
+
+# ============================================================
+# Azure Firewall
+# ============================================================
+
+firewall_name        = "afw-hub-prod-01"
+firewall_policy_name = "pol-afw-hub-prod-01"
+
+
+# ============================================================
+# Storage
+# ============================================================
+
+storage_account_name     = "stspokeprod01"
+file_share_name           = "dmontech-files"
+app_data_container_name   = "app-data"
+archive_container_name    = "archive"
+
+
+# ============================================================
+# Common Tags
+# ============================================================
+
+common_tags = {
+  Project     = "DmonTech"
+  Environment = "Production"
+  ManagedBy   = "Terraform"
+  Purpose     = "Enterprise-Hybrid-Infrastructure-Lab"
+}
