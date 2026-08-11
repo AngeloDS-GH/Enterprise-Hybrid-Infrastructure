@@ -1,84 +1,205 @@
-# 🛣️ Phase 5 — User Defined Routes (UDR)
+# 🛣️ Phase 5 — User Defined Routes & Forced Traffic Inspection
+
+## 📌 Business Requirement
+
+DmonTech requires production workloads in the Spoke network to use a centralized network security path rather than relying exclusively on Azure's default routing behavior.
+
+To enforce this architecture, outbound traffic from the workload subnet is redirected toward **Azure Firewall** in the Hub network before reaching external destinations.
 
 ---
 
-# 📌 Business Requirement
+## 🎯 Objective
 
-To enforce centralized security inspection, production workloads must not access the Internet directly.
+Implement a **User Defined Route (UDR)** on the production workload subnet to establish Azure Firewall as the next hop for outbound traffic.
 
-Instead, all outbound traffic should be redirected through Azure Firewall before leaving the Azure environment.
-
----
-
-# 🎯 Objective
-
-Configure User Defined Routes (UDRs) that force outbound traffic from the Spoke Virtual Network to Azure Firewall.
+This provides a controlled traffic path between Spoke workloads and external networks.
 
 ---
 
-# 🏗️ Route Table
+## 🏗️ Route Table Configuration
 
 | Property | Value |
-|----------|-------|
-| Name | rt-spoke-to-hub-01 |
-| Associated Subnet | Spoke Application Subnet |
+|---|---|
+| Route Table | `rt-spoke-to-hub-01` |
+| Region | East US 2 |
+| Associated VNet | `vnet-spk-workloads-01` |
+| Associated Subnet | `snet-app-01` |
+| Subnet Address Range | `10.1.1.0/24` |
+
+The route table is associated directly with the application workload subnet so that its custom routing configuration applies to resources deployed within that subnet.
 
 ---
 
-# 📋 Configured Route
+## 📋 User Defined Route
 
-Destination Prefix
+A default route was configured to redirect outbound traffic toward the centralized Azure Firewall.
 
-0.0.0.0/0
+| Property | Value |
+|---|---|
+| Route Name | `default-to-firewall` |
+| Destination Prefix | `0.0.0.0/0` |
+| Next Hop Type | Virtual Appliance |
+| Next Hop IP Address | `10.0.1.4` |
 
-Next Hop Type
+The next-hop address corresponds to the private IP assigned to `afw-hub-prod-01`.
 
+---
+
+## 🔄 Traffic Flow
+
+The resulting routing path is:
+
+```text
+Workload
+   |
+   v
+snet-app-01
+10.1.1.0/24
+   |
+   v
+rt-spoke-to-hub-01
+   |
+   | 0.0.0.0/0
+   v
 Virtual Appliance
-
-Next Hop Address
-
 10.0.1.4
+   |
+   v
+Azure Firewall
+afw-hub-prod-01
+   |
+   v
+Firewall Policy
+   |
+   v
+Allowed Destination
+```
+
+The route `0.0.0.0/0` overrides the normal Internet-bound path for resources affected by the route table and directs matching traffic to Azure Firewall as a virtual appliance.
 
 ---
 
-# 🔐 Security Rationale
+## 🔐 Security Rationale
 
-Without User Defined Routes, Azure workloads can communicate directly with the Internet using Azure's default routing behavior.
+Without the custom route, workloads can rely on Azure system routes for outbound connectivity.
 
-By overriding the default system route, every outbound connection is inspected by Azure Firewall before reaching external destinations.
+The UDR establishes an explicit security path through the Hub firewall infrastructure.
 
-This approach supports:
+This supports:
 
-- Centralized monitoring
-- Traffic inspection
-- Future logging
-- Security policy enforcement
-- Zero Trust networking
+- Centralized traffic inspection
+- Centralized network policy enforcement
+- Controlled outbound connectivity
+- Consistent routing across workloads
+- Reusable routing for future Spoke networks
+- Defense-in-depth networking
 
----
-
-# 🧠 Architectural Decisions
-
-A forced tunneling model was selected because it provides a single point for network policy enforcement and reduces the attack surface exposed by direct Internet access.
-
-As new spoke networks are deployed, they can reuse the same routing strategy without redesigning the network architecture.
+The route table therefore works together with Azure Firewall rather than acting as a security control by itself.
 
 ---
 
-# ✅ Validation
+## 🛡️ Layered Network Security
 
-Validated items:
+The workload subnet combines multiple networking controls:
 
-- Route Table deployed
-- Route associated with Spoke subnet
-- Next Hop resolved to Azure Firewall
-- Effective Routes confirmed
-- Traffic successfully redirected
+```text
+                    Spoke
+                      |
+                      v
+               snet-app-01
+                /         \
+               /           \
+              v             v
+     nsg-spoke-workloads-01
+                            |
+                            v
+                  rt-spoke-to-hub-01
+                            |
+                            v
+                    Azure Firewall
+                      10.0.1.4
+```
+
+Each component has a different responsibility:
+
+- **NSG:** filters traffic at the workload subnet level.
+- **Route Table:** determines the required network path.
+- **Azure Firewall:** performs centralized traffic filtering and policy enforcement.
+- **VNet Peering:** provides private connectivity between the Spoke and Hub networks.
+
+This separation of responsibilities provides a more scalable architecture than relying on a single network security mechanism.
 
 ---
 
-# 📚 Lessons Learned
+## 🧠 Architectural Decisions
 
-User Defined Routes are fundamental in Hub-and-Spoke environments because Azure system routes alone cannot enforce centralized security inspection.
+### Default Route Through Azure Firewall
 
-Combining UDRs with Azure Firewall provides a scalable network security architecture that aligns with Zero Trust principles.
+The destination prefix `0.0.0.0/0` was selected so that Internet-bound traffic matching the route is forwarded toward the centralized firewall.
+
+Azure Firewall's private IP `10.0.1.4` was configured as the next hop using the **Virtual Appliance** next-hop type.
+
+### Subnet-Level Association
+
+The route table was associated with `snet-app-01` rather than individual virtual machines.
+
+This allows routing policy to be applied consistently to workloads deployed inside the subnet without requiring per-VM route configuration.
+
+### Centralized Hub Routing
+
+Routing security services through the Hub creates a reusable architecture for future Spoke networks.
+
+Additional workload networks can adopt the same model:
+
+```text
+Spoke A ──┐
+          |
+Spoke B ──┼──> Hub ──> Azure Firewall
+          |
+Spoke C ──┘
+```
+
+This allows network security infrastructure to remain centralized as the Azure environment expands.
+
+---
+
+## 📸 Deployment Evidence
+
+### Route Table and Default Route
+
+![Route Table Overview](../../images/route-table-overview.png)
+
+*Route table `rt-spoke-to-hub-01` configured with the `default-to-firewall` route, forwarding `0.0.0.0/0` traffic to Azure Firewall private IP `10.0.1.4` through the Virtual Appliance next-hop type.*
+
+### Workload Subnet Association
+
+![Route Table Subnet Association](../../images/route-table-subnet-association.png)
+
+*Route table associated with `snet-app-01` (`10.1.1.0/24`) inside `vnet-spk-workloads-01`. The workload subnet is additionally protected by `nsg-spoke-workloads-01`.*
+
+---
+
+## ✅ Validation
+
+The implementation was validated through the Azure portal:
+
+- Route table `rt-spoke-to-hub-01` successfully deployed.
+- Route `default-to-firewall` configured.
+- Destination prefix set to `0.0.0.0/0`.
+- Next hop configured as `Virtual Appliance`.
+- Azure Firewall private IP `10.0.1.4` configured as the next hop.
+- Route table associated with `snet-app-01`.
+- Subnet confirmed inside `vnet-spk-workloads-01`.
+- NSG `nsg-spoke-workloads-01` confirmed on the workload subnet.
+
+---
+
+## 📚 Lessons Learned
+
+User Defined Routes are a critical component of centralized network security because deploying Azure Firewall alone does not automatically place the firewall in the traffic path.
+
+The routing layer must explicitly direct the required traffic toward the firewall.
+
+The implementation also demonstrated the distinction between **routing and filtering**: the route table determines where traffic goes, while Azure Firewall and NSGs determine which traffic is permitted.
+
+Combining VNet Peering, UDRs, Azure Firewall, and NSGs creates a modular Hub-and-Spoke network architecture that can be extended as additional workloads and Spoke networks are introduced.

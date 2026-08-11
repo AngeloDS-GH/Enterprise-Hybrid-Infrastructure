@@ -1,131 +1,238 @@
-# Azure Key Vault
+# 🔐 Azure Key Vault
 
-## Overview
+## 📌 Business Requirement
 
-Azure Key Vault was implemented to provide centralized and secure storage for sensitive information used throughout the DmonTech hybrid infrastructure.
+DmonTech required a centralized and secure mechanism for storing sensitive information used throughout the Azure environment.
 
-Instead of embedding passwords, connection strings, certificates, or cryptographic keys within applications or scripts, Azure Key Vault provides a managed service for securely storing and controlling access to secrets.
+Administrative credentials, application secrets, connection strings, certificates, and cryptographic material should not be embedded directly within applications, scripts, or infrastructure configurations.
 
-The implementation follows Microsoft's Zero Trust principles by enforcing Azure Role-Based Access Control (RBAC) instead of the legacy Access Policies model.
+The solution needed to provide:
 
----
-
-# Business Requirements
-
-The organization required:
-
-- Secure storage for administrative credentials and application secrets.
-- Centralized management of sensitive information.
-- Granular access control using Azure RBAC.
-- Support for future application integrations.
-- Reduce the risk of credential exposure.
+- Centralized secret management.
+- Granular access control.
+- Integration with Azure RBAC.
+- Protection against accidental secret exposure.
+- Support for future application and automation integrations.
+- Alignment with Zero Trust and Least Privilege principles.
 
 ---
 
-# Solution Overview
+## 🎯 Objective
 
-Azure Key Vault was deployed using Azure RBAC as the authorization model.
+Deploy Azure Key Vault as the centralized secrets management platform for the DmonTech Azure environment.
 
-Resource Name
+The implementation was designed to:
 
-```
-kv-dmontech-prod-01
-```
-
-Region
-
-```
-East US 2
-```
-
-Pricing Tier
-
-```
-Standard
-```
-
-Authorization Model
-
-```
-Azure Role-Based Access Control (RBAC)
-```
-
-A sample secret was created to validate permissions and demonstrate secure secret management.
+- Securely store sensitive information.
+- Control secret management through Azure RBAC.
+- Separate credentials from applications and scripts.
+- Validate secret creation and storage.
+- Establish a foundation for future workload integrations.
 
 ---
 
-# RBAC Configuration
+## 🏗️ Architecture
 
-Instead of using Vault Access Policies, Azure RBAC was selected as the authorization model.
+The following Key Vault was deployed:
 
-To allow secret management, the following Azure role was assigned:
+| Component | Configuration |
+|---|---|
+| Key Vault | `kv-dmontech-prod-01` |
+| Resource Group | `rg-dmontech-net-prod-01` |
+| Region | `East US 2` |
+| Pricing Tier | `Standard` |
+| Authorization Model | Azure RBAC |
+| Soft Delete | Enabled |
+| Sample Secret | `SqlAdminPassword` |
 
+Azure Key Vault acts as the centralized security boundary for secrets used by workloads and administrative processes.
+
+```text
+Azure Workloads / Administrators
+              │
+              ▼
+          Azure RBAC
+              │
+              ▼
+    kv-dmontech-prod-01
+              │
+              ▼
+ Secrets / Keys / Certificates
 ```
-Key Vault Secrets Officer
-```
-
-This role grants permission to create, update, delete, and manage secrets without providing unnecessary administrative privileges over the entire Azure subscription.
-
-This approach aligns with the Principle of Least Privilege by assigning only the permissions required to perform the intended administrative tasks.
 
 ---
 
-# Secret Management
+## 🔐 RBAC Configuration
 
-A sample secret was created to validate the deployment.
+Azure Role-Based Access Control was used to manage administrative access to the Key Vault.
 
-Secret Name
+The following role was assigned directly at the Key Vault resource scope:
 
-```
-SqlAdminPassword
-```
+`Key Vault Secrets Officer`
 
-The secret was successfully stored inside Azure Key Vault, demonstrating secure credential management without exposing sensitive information within the infrastructure.
+This role provides the permissions required to create, update, delete, and manage secrets without granting unnecessary administrative permissions over the entire Azure subscription.
 
-For security reasons, secret values were never displayed or documented.
+The implementation follows the **Principle of Least Privilege**, where identities receive only the permissions necessary to perform their intended administrative functions.
+
+The role assignment was successfully validated through **Access control (IAM)** on `kv-dmontech-prod-01`.
 
 ---
 
-# Validation
+## 🔑 Secret Management
+
+A sample secret was created to validate the Key Vault deployment and RBAC permissions.
+
+Secret name:
+
+`SqlAdminPassword`
+
+Status:
+
+`Enabled`
+
+The secret was successfully stored within Azure Key Vault.
+
+The actual secret value was intentionally excluded from screenshots and documentation to prevent sensitive information from being exposed through the Git repository.
+
+This demonstrates how credentials can be separated from application code, scripts, and infrastructure documentation while remaining centrally managed.
+
+---
+
+## 🛡️ Security
+
+The Key Vault implementation improves the security posture of the DmonTech environment through:
+
+- Centralized secret storage.
+- Azure RBAC authorization.
+- Least Privilege access control.
+- Resource-scoped administrative permissions.
+- Separation of credentials from applications and scripts.
+- Reduced risk of accidental credential exposure.
+- Soft Delete protection.
+- Support for future managed identity integrations.
+
+Sensitive secret values are never stored directly within the repository.
+
+---
+
+## 📸 Evidence
+
+### Azure Key Vault Overview
+
+The deployed `kv-dmontech-prod-01` Key Vault is running in **East US 2** using the **Standard** pricing tier.
+
+The configuration also confirms that **Soft Delete** is enabled.
+
+![Azure Key Vault Overview](../../images/KeyVault-Overview.png)
+
+### RBAC Role Assignment
+
+The **Key Vault Secrets Officer** role was assigned directly at the Key Vault resource scope, providing the required permissions for secret administration while following the Principle of Least Privilege.
+
+![RBAC Role Assignment](../../images/IAM-keyvault-config.png)
+
+### Secret List
+
+The `SqlAdminPassword` secret was successfully created and is shown as **Enabled**.
+
+The secret value itself is intentionally not displayed or stored in the repository.
+
+![Secret List](../../images/KeyVault-Secrets.png)
+
+---
+
+## 🧠 Architectural Decisions
+
+### Azure RBAC Authorization
+
+Azure RBAC was selected to integrate Key Vault permissions with Azure's centralized identity and access management model.
+
+This provides a consistent authorization approach across the Azure environment and allows permissions to be controlled using standard Azure role assignments.
+
+### Resource-Level Role Assignment
+
+The `Key Vault Secrets Officer` role was assigned specifically at the `kv-dmontech-prod-01` resource scope.
+
+This limits secret-management privileges to the required Key Vault instead of granting broader permissions across the subscription.
+
+### Secret Values Excluded from Documentation
+
+Only the secret name and operational status are documented.
+
+Actual secret values are never stored in:
+
+- Markdown documentation.
+- Screenshots.
+- Source control.
+- Infrastructure scripts.
+- Repository configuration files.
+
+This prevents credentials from being unintentionally exposed through the project repository.
+
+### Soft Delete
+
+Soft Delete is enabled on the Key Vault.
+
+This provides additional protection against accidental deletion by allowing deleted Key Vault objects to remain recoverable during their retention period.
+
+---
+
+## 💰 Cost Management
+
+Azure Key Vault uses a consumption-based pricing model, with costs primarily associated with operations performed against secrets, keys, and certificates.
+
+For this lab environment, only a minimal number of secrets and operations were required.
+
+The Standard tier provides the functionality required to demonstrate enterprise secret management without introducing unnecessary infrastructure or significant persistent costs.
+
+---
+
+## ✅ Validation
 
 The following validations were completed:
 
-- Azure Key Vault successfully deployed.
-- Azure RBAC configured as the authorization model.
-- RBAC permissions assigned successfully.
-- Secret creation validated.
-- Secret stored securely within Azure Key Vault.
+- [x] Azure Key Vault successfully deployed.
+- [x] Key Vault deployed as `kv-dmontech-prod-01`.
+- [x] Key Vault deployed in `East US 2`.
+- [x] Standard pricing tier configured.
+- [x] Soft Delete enabled.
+- [x] Azure RBAC used for authorization.
+- [x] `Key Vault Secrets Officer` role assigned.
+- [x] Role assignment scoped directly to the Key Vault.
+- [x] `SqlAdminPassword` secret successfully created.
+- [x] Secret status confirmed as `Enabled`.
+- [x] Secret value excluded from documentation and screenshots.
+
+The deployment successfully demonstrated centralized and controlled secret management within the DmonTech Azure environment.
 
 ---
 
-# Security Benefits
+## 📚 Lessons Learned
 
-Azure Key Vault provides several security advantages:
+Azure Key Vault provides a centralized mechanism for separating sensitive information from applications, scripts, and infrastructure configurations.
 
-- Centralized secret management.
-- Secure storage for passwords, certificates, and cryptographic keys.
-- Azure RBAC integration.
-- Least Privilege access control.
-- Support for Zero Trust security architecture.
-- Reduced credential exposure.
+Using Azure RBAC simplifies authorization by integrating Key Vault with the same access control model used throughout Azure.
 
----
+Resource-level role assignments provide more granular control over administrative permissions and support the Principle of Least Privilege.
 
-# Lessons Learned
+Sensitive values should never be stored directly in source control, documentation, or infrastructure scripts. Applications and automation processes should instead retrieve required secrets securely from a managed secrets platform such as Azure Key Vault.
 
-Using Azure RBAC instead of traditional Access Policies simplifies permission management by integrating Key Vault with Azure's centralized authorization model.
-
-Separating secret storage from applications improves security, simplifies credential rotation, and reduces the likelihood of accidental credential exposure.
-
-Azure Key Vault is a foundational service for implementing secure cloud architectures and supports future integration with virtual machines, applications, automation accounts, and Azure services.
+The implementation also establishes a foundation for future integration with Azure managed identities, allowing workloads to authenticate to Key Vault without storing credentials locally.
 
 ---
 
-# Screenshots
+## 🏁 Result
 
--Azure Key Vault Overview
-![Azure Key Vault Overview](../../images/KeyVault-Overview.png)
--RBAC Role Assignment
-![RBAC Role Assignment](../../images/IAM-keyvault-config.png)
--Secret List
-![Secret List](../../images/KeyVault-Secrets.png)
+Azure Key Vault was successfully implemented as the centralized secrets management service for the DmonTech environment.
+
+The final implementation provides:
+
+- Secure centralized secret storage.
+- Azure RBAC-based authorization.
+- Least Privilege administrative access.
+- Resource-level permission scoping.
+- Soft Delete protection.
+- Successful secret creation and validation.
+- Separation of sensitive credentials from documentation and application code.
+
+This establishes a secure foundation for future integration with Azure virtual machines, managed identities, applications, automation services, and infrastructure deployment workflows.

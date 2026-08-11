@@ -1,22 +1,40 @@
-# Secure Azure Storage Architecture
+# 🔐 Secure Azure Storage Architecture
 
-## Executive Summary
+## 📌 Business Requirement
 
-This document describes the implementation of the storage layer for the DmonTech Azure environment.
+DmonTech requires a secure and scalable storage platform capable of supporting application data, archival data, and shared file workloads while minimizing public exposure.
 
-The solution was designed around three primary objectives:
+The storage architecture must:
 
-- Restrict storage exposure and maintain private connectivity.
-- Provide multiple storage services for different workload requirements.
-- Implement automated data lifecycle management to optimize long-term storage costs.
-
-The final implementation combines Azure Storage, Private Link, Private DNS, Azure Blob Storage, Azure Files, and Lifecycle Management within the Spoke architecture.
+- Restrict storage exposure from the public Internet.
+- Provide private connectivity from Azure workloads.
+- Support object and file-based storage.
+- Separate operational data from archival data.
+- Automate long-term data lifecycle management.
+- Optimize storage consumption and long-term costs.
+- Integrate with the existing Hub-Spoke network architecture.
 
 ---
 
-## 1. Storage Account
+## 🎯 Objective
 
-The primary storage resource deployed for the DmonTech environment was:
+The objective of this implementation is to deploy a secure Azure Storage architecture using:
+
+- Azure Storage Account.
+- Azure Blob Storage.
+- Azure Files.
+- Azure Private Endpoint.
+- Azure Private DNS.
+- Private Blob containers.
+- Lifecycle Management.
+
+The resulting architecture provides private data-plane connectivity while supporting different workload and retention requirements.
+
+---
+
+## 🏗️ Architecture
+
+The primary storage resource deployed for the DmonTech environment is:
 
 | Setting | Value |
 |---|---|
@@ -26,17 +44,13 @@ The primary storage resource deployed for the DmonTech environment was:
 | Redundancy | LRS |
 | Public Network Access | Disabled |
 
-The storage account provides the centralized storage platform for Blob and Azure Files workloads.
+The Storage Account acts as the centralized storage platform for Blob and Azure Files workloads.
 
 Public network access was disabled as part of the security design, preventing direct data-plane connectivity from the public Internet.
 
----
-
-## 2. Private Endpoint
+### Private Endpoint
 
 A Private Endpoint was deployed to provide private connectivity to the Blob service.
-
-### Configuration
 
 | Setting | Value |
 |---|---|
@@ -46,17 +60,13 @@ A Private Endpoint was deployed to provide private connectivity to the Blob serv
 | Connectivity | Private Link |
 | Public Access | Disabled |
 
-Private Endpoint connectivity allows clients inside the Azure network to reach the storage service through a private IP address rather than through its public endpoint.
+Private Endpoint connectivity allows workloads inside the Azure network to reach the Storage Account through a private IP address rather than through its public endpoint.
 
-This supports the broader Zero Trust design by reducing unnecessary public exposure of storage resources.
+This supports the broader Zero Trust architecture by reducing unnecessary public exposure of storage resources.
 
----
+### Private DNS Integration
 
-## 3. Private DNS Integration
-
-Private DNS was integrated with the Storage Account Private Endpoint.
-
-The following Private DNS Zone was used:
+Private DNS was integrated with the Storage Account Private Endpoint using:
 
 ```text
 privatelink.blob.core.windows.net
@@ -64,35 +74,31 @@ privatelink.blob.core.windows.net
 
 The Private Endpoint integration creates the required private DNS resolution path so that requests for the Storage Account Blob endpoint resolve to its internal Private Endpoint address.
 
-The resulting connectivity model is:
-
 ```text
 Azure Workload
       |
       v
-Spoke VNet
+  Spoke VNet
       |
       v
-Private DNS
+ Private DNS
       |
       v
 Private Endpoint
       |
       v
-Azure Storage
+ Azure Storage
 ```
 
 This keeps storage traffic within the Azure private networking architecture.
 
 ---
 
-# Storage Services
+## 📂 Storage Services
 
-## 4. Azure Files
+### Azure Files
 
 Azure Files was implemented to demonstrate managed SMB file storage within the DmonTech environment.
-
-The following file share was created:
 
 | Setting | Value |
 |---|---|
@@ -104,21 +110,11 @@ The following file share was created:
 
 Azure Files provides managed file shares without requiring the organization to deploy and maintain a traditional Windows file server.
 
-The service can support workloads that require shared file access while benefiting from Azure Storage availability and management capabilities.
+The service can support workloads requiring shared file access while benefiting from Azure Storage availability and management capabilities.
 
-### Azure Files Evidence
-
-![Azure Files Share](../../images/azure-files.png)
-
-*Azure Files share `dmontech-files` configured within the DmonTech Storage Account.*
-
----
-
-## 5. Blob Storage
+### Blob Storage
 
 Blob Storage was configured to provide object storage for application and archival data.
-
-Two containers were created:
 
 | Container | Purpose | Public Access |
 |---|---|---|
@@ -129,19 +125,13 @@ Anonymous access was disabled for both containers.
 
 Separating active application data from archival data allows different lifecycle and retention strategies to be applied according to the purpose of the stored information.
 
-### Blob Storage Evidence
-
-![Azure Blob Containers](../../images/containers.png)
-
-*Private Blob containers `app-data` and `archive` configured within `stspokeprod01`.*
-
 ---
 
-## 6. Storage Lifecycle Management
+## ♻️ Lifecycle Management
 
 Azure Storage Lifecycle Management was implemented to automatically transition archival data between storage tiers as it ages.
 
-The policy created for the project was:
+The policy created for the project is:
 
 ```text
 lifecycle-archive-data
@@ -155,10 +145,6 @@ archive/
 
 This prevents the lifecycle policy from affecting application data stored outside the archival container.
 
----
-
-## 7. Lifecycle Policy
-
 The following lifecycle strategy was implemented:
 
 | Data Age | Action |
@@ -167,23 +153,23 @@ The following lifecycle strategy was implemented:
 | More than 90 days | Move to Archive tier |
 | More than 365 days | Delete blob |
 
-The lifecycle progression therefore follows:
+The lifecycle progression follows:
 
 ```text
 Archive Container
        |
        v
-    Hot Tier
+      Hot
        |
     30 Days
        |
        v
-    Cool Tier
+      Cool
        |
     90 Days
        |
        v
-  Archive Tier
+    Archive
        |
    365 Days
        |
@@ -193,27 +179,13 @@ Archive Container
 
 This provides automated cost optimization without requiring administrators to manually move old data between storage tiers.
 
-### Lifecycle Management Evidence
-
-<!-- SCREENSHOT 3: Lifecycle Management JSON showing Cool 30 / Archive 90 / Delete 365 -->
-
-![Azure Storage Lifecycle Policy](../../images/lifecycle-management-rule.png)
-
-*Lifecycle policy `lifecycle-archive-data` automatically transitioning archival blobs through Cool and Archive tiers before deletion.*
-
----
-
-## 8. Lifecycle Policy Scope
-
-The lifecycle rule was intentionally limited using the following prefix filter:
+The rule was intentionally scoped to:
 
 ```text
 archive/
 ```
 
-This ensures that the policy targets archival data rather than every Blob stored within the Storage Account.
-
-For example:
+This ensures that archival data follows the lifecycle policy while operational data remains unaffected.
 
 ```text
 stspokeprod01
@@ -236,11 +208,9 @@ stspokeprod01
            Delete
 ```
 
-This separation allows operational data and archival data to follow different storage strategies.
-
 ---
 
-## 9. Security Architecture
+## 🔐 Security
 
 The Storage Account was designed around restricted access and workload isolation.
 
@@ -257,103 +227,165 @@ Key security controls include:
 The resulting security model is:
 
 ```text
-Internet
-   X
-   |
-   |
-Azure Workload
-      |
-      v
-Spoke VNet
-      |
-      v
-Private Endpoint
-      |
-      v
-stspokeprod01
-      |
-      +----------------+
-      |                |
-      v                v
- Azure Files       Blob Storage
-                    |
-             +------+------+
-             |             |
-             v             v
-         app-data        archive
-                           |
-                           v
-                   Lifecycle Policy
+               Internet
+                  X
+                  |
+            Azure Workload
+                  |
+                  v
+              Spoke VNet
+                  |
+                  v
+          Private Endpoint
+                  |
+                  v
+           stspokeprod01
+                  |
+          +-------+-------+
+          |               |
+          v               v
+     Azure Files      Blob Storage
+                          |
+                    +-----+-----+
+                    |           |
+                    v           v
+                app-data     archive
+                                |
+                                v
+                         Lifecycle Policy
 ```
 
-This architecture reduces direct exposure of the storage layer while providing different storage services for workload requirements.
+This architecture reduces direct exposure of the storage layer while providing different storage services according to workload requirements.
 
 ---
 
-## 10. Cost Optimization
+## 📸 Evidence
+
+### Azure Files
+
+![Azure Files Share](../../images/azure-files.png)
+
+*Azure Files share `dmontech-files` configured within the DmonTech Storage Account.*
+
+### Blob Storage
+
+![Azure Blob Containers](../../images/containers.png)
+
+*Private Blob containers `app-data` and `archive` configured within `stspokeprod01`.*
+
+### Lifecycle Management
+
+![Azure Storage Lifecycle Policy](../../images/lifecycle-management-rule.png)
+
+*Lifecycle policy `lifecycle-archive-data` automatically transitioning archival blobs through Cool and Archive tiers before deletion.*
+
+---
+
+## 🧠 Architectural Decisions
+
+### Private Connectivity
+
+Public network access was disabled and Private Link was selected as the primary data-plane connectivity model.
+
+This reduces the attack surface of the Storage Account and prevents workloads from depending on Internet-accessible storage endpoints.
+
+### Operational and Archival Data Separation
+
+`app-data` and `archive` were separated into different Blob containers.
+
+This provides logical workload separation and allows lifecycle policies to target archival information without affecting active application data.
+
+### Private Containers by Default
+
+Anonymous Blob access was not enabled.
+
+Storage objects therefore require authenticated and authorized access rather than being publicly retrievable.
+
+### Automated Lifecycle Management
+
+Lifecycle Management was selected instead of manually moving aging data between storage tiers.
+
+This provides a repeatable and automated retention strategy while reducing administrative overhead.
+
+### LRS for the Lab Environment
+
+Locally Redundant Storage was selected for the project environment to demonstrate the architecture while maintaining reasonable lab costs.
+
+Higher redundancy options could be selected in a production environment according to business continuity and disaster recovery requirements.
+
+---
+
+## 💰 Cost Management
 
 Storage cost optimization was incorporated directly into the architecture.
 
 The Lifecycle Management policy automatically moves aging archival data toward lower-cost storage tiers:
 
 ```text
-Frequently accessed
-       |
-       v
-      Hot
-       |
-       v
-      Cool
-       |
-       v
-    Archive
-       |
-       v
-     Delete
+Frequently Accessed
+        |
+        v
+       Hot
+        |
+        v
+       Cool
+        |
+        v
+     Archive
+        |
+        v
+      Delete
 ```
 
-This approach is preferable to storing all data indefinitely in a frequently accessed storage tier.
+The implemented strategy:
 
-The architecture therefore considers both technical storage requirements and long-term cloud consumption.
+- Keeps recently created archival data in the Hot tier.
+- Transitions data older than 30 days to Cool.
+- Transitions data older than 90 days to Archive.
+- Automatically deletes archival data older than 365 days.
+
+This approach avoids storing all data indefinitely in frequently accessed storage tiers.
+
+Standard LRS was also selected to provide an appropriate cost profile for the lab environment.
 
 ---
 
-## 11. Operational Considerations
+## ⚙️ Operational Considerations
 
 The storage implementation demonstrates several operational principles:
 
 - Different storage services should be selected according to workload requirements.
 - Storage should not be publicly accessible unless there is a specific business requirement.
-- Private Link can provide private data-plane connectivity to Azure PaaS services.
-- Private DNS is required to provide transparent name resolution for Private Endpoint resources.
+- Private Link provides private data-plane connectivity to Azure PaaS services.
+- Private DNS provides transparent name resolution for Private Endpoint resources.
 - Blob containers should remain private by default.
 - Lifecycle policies can automate storage cost optimization.
 - Archival and operational data should be logically separated when they require different retention strategies.
 
 ---
 
-## 12. Validation Summary
-
-The following storage capabilities were implemented:
+## ✅ Validation
 
 | Capability | Status |
 |---|---|
-| Azure Storage Account | Completed |
-| Standard LRS Storage | Completed |
-| Public Network Access Disabled | Completed |
-| Private Endpoint | Completed |
-| Private DNS Integration | Completed |
-| Azure Files | Completed |
-| Blob Storage | Completed |
-| Private Blob Containers | Completed |
-| Lifecycle Management | Completed |
-| Cool Tier Transition | Configured |
-| Archive Tier Transition | Configured |
-| Automatic Deletion | Configured |
+| Azure Storage Account | ✅ Completed |
+| Standard LRS Storage | ✅ Completed |
+| Public Network Access Disabled | ✅ Completed |
+| Private Endpoint | ✅ Completed |
+| Private DNS Integration | ✅ Completed |
+| Azure Files | ✅ Completed |
+| Blob Storage | ✅ Completed |
+| Private Blob Containers | ✅ Completed |
+| Lifecycle Management | ✅ Completed |
+| Cool Tier Transition | ✅ Configured |
+| Archive Tier Transition | ✅ Configured |
+| Automatic Deletion | ✅ Configured |
+
+The implementation demonstrates that DmonTech workloads can use multiple Azure Storage services while maintaining a private connectivity model and automated data lifecycle strategy.
 
 ---
 
-## 13. Lessons Learned
+## 📚 Lessons Learned
 
 Azure Storage provides multiple services within a common storage platform, but each service addresses different workload requirements.
 
@@ -367,11 +399,11 @@ Combining private connectivity, logical data separation, and automated lifecycle
 
 ---
 
-## Result
+## 🏁 Result
 
 The DmonTech Azure environment successfully implemented a secure and cost-aware storage architecture.
 
-The solution includes:
+The final solution includes:
 
 - Standard LRS Azure Storage.
 - Private Endpoint connectivity.
@@ -383,4 +415,4 @@ The solution includes:
 - Cool and Archive tier transitions.
 - Automatic deletion of aged archival data.
 
-Together, these components provide a storage platform designed around private connectivity, workload flexibility, security, and long-term cost optimization.
+Together, these components provide a storage platform designed around **private connectivity, workload flexibility, security, and long-term cost optimization**.

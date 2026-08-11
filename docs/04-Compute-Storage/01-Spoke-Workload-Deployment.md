@@ -1,360 +1,531 @@
-# Spoke Workload Deployment & Compute Availability
-
-## Executive Summary
-
-This document covers the deployment and validation of Azure compute workloads within the DmonTech Spoke VNet.
-
-The implementation evolved from an initial workload used to validate forced tunneling and Azure Bastion connectivity into a broader compute architecture demonstrating Azure Virtual Machines, Availability Zones, Availability Sets, Managed Disks, and Virtual Machine Scale Sets.
-
-The objective was to demonstrate multiple Azure compute availability and scalability models while maintaining workload isolation inside the Spoke network.
+# 🖥️ Phase 6 — Spoke Workload Deployment
 
 ---
 
-## 1. Initial Spoke Workload
+## 📌 Business Requirement
 
-The original workload was deployed inside the Spoke VNet to validate network routing, centralized traffic inspection, and private administrative access.
+DmonTech requires a dedicated compute layer for production workloads while maintaining separation from centralized networking and security services hosted in the Hub.
 
-### Workload Specifications
+Application workloads must remain isolated inside the Spoke network, avoid unnecessary direct Internet exposure, and integrate with the existing Azure Firewall, Network Security Groups, User Defined Routes, and Azure Bastion architecture.
 
-| Setting | Value |
+The environment must also demonstrate multiple Azure compute availability and scalability models suitable for enterprise workloads.
+
+---
+
+## 🎯 Objective
+
+Deploy and validate Azure compute resources inside the production Spoke network while demonstrating:
+
+- Private Windows Server virtual machines.
+- Availability Zone placement.
+- Azure Managed Disks.
+- Availability Sets.
+- Virtual Machine Scale Sets.
+- Integration with the existing Hub-and-Spoke architecture.
+- Centralized network security and administrative access.
+
+---
+
+## 🏗️ Compute Architecture
+
+The compute environment was deployed inside the production Spoke network.
+
+| Property | Value |
 |---|---|
-| VM Name | `vm-spoke-app-01` |
 | Resource Group | `rg-spoke-prod-01` |
-| Operating System | Windows Server 2022 Datacenter |
-| Public IP | None |
 | Region | East US 2 |
+| Virtual Network | `vnet-spk-workloads-01` |
+| Workload Subnet | `snet-app-01` |
+| Spoke Address Space | `10.1.0.0/16` |
+| Workload Subnet | `10.1.1.0/24` |
 
-The workload was intentionally deployed without a public IP address.
+The resulting architecture follows:
 
-Administrative access was performed through Azure Bastion, while outbound traffic was controlled through the Hub-Spoke networking architecture.
+```text
+                    Azure Hub
+                        |
+        +---------------+---------------+
+        |                               |
+        v                               v
+ Azure Firewall                   Azure Bastion
+ afw-hub-prod-01                 bas-hub-prod-01
+        |                               |
+        +---------------+---------------+
+                        |
+                 VNet Peering
+                        |
+                        v
+              vnet-spk-workloads-01
+                        |
+                    snet-app-01
+                        |
+          +-------------+-------------+
+          |             |             |
+          v             v             v
+ vm-spoke-app-01 vm-spoke-app-02 vmss-app-prod-01
+                        |
+                        v
+                disk-app-data-01
+```
+
+This design keeps application compute inside the Spoke while shared networking and security services remain centralized in the Hub.
 
 ---
 
-## 2. SKU Selection Strategy
+## 🖥️ Primary Workload Virtual Machine
 
-During the initial deployment, regional subscription quota restrictions prevented the use of the originally planned B-series virtual machine sizes.
+The first application workload deployed in the Spoke was:
 
-A D-series SKU was therefore selected to complete the workload deployment without requiring a quota increase.
+`vm-spoke-app-01`
 
-This demonstrated an important operational consideration when designing Azure environments: VM SKU availability can depend on subscription type, regional capacity, and assigned compute quotas.
+| Property | Value |
+|---|---|
+| Virtual Machine | `vm-spoke-app-01` |
+| Resource Group | `rg-spoke-prod-01` |
+| Region | East US 2 |
+| Operating System | Windows Server 2022 Datacenter |
+| VM Size | `Standard_D2als_v7` |
+| Virtual Network | `vnet-spk-workloads-01` |
+| Subnet | `snet-app-01` |
+| Private IP | `10.1.1.4` |
+| Public IP | None |
 
-For production environments, capacity and quota requirements should be reviewed before deployment.
+The virtual machine was intentionally deployed without a public IP address.
 
----
+Administrative connectivity is provided through Azure Bastion rather than exposing RDP directly to the Internet.
 
-## 3. Route Enforcement Validation
-
-The initial workload was also used to validate forced tunneling through the centralized network security architecture.
-
-Effective routes on the VM network interface confirmed that the default route:
-
-```text
-0.0.0.0/0
-```
-
-used:
-
-```text
-Next Hop Type: Virtual Appliance
-```
-
-with the Azure Firewall private IP:
-
-```text
-10.0.1.4
-```
-
-This validated that outbound workload traffic was being redirected toward the centralized Azure Firewall rather than bypassing the Hub security layer.
-
-Azure Bastion was also used to establish an isolated administrative session without assigning a public IP address directly to the workload VM.
-
----
+### 📸 Primary VM Evidence
 
 ![vm-spoke-app-01](../../images/compute-vm-overview.png)
 
+*`vm-spoke-app-01` deployed inside `snet-app-01` using private addressing and no public IP.*
 
-# Extended Compute Implementation
+---
 
-## 4. Zoned Workload VM
+## 🌐 Spoke Network Integration
 
-A second temporary workload was later deployed to demonstrate additional Azure compute capabilities.
+The workload VMs are connected to:
 
-### VM Configuration
+```text
+vnet-spk-workloads-01
+        |
+        v
+snet-app-01
+```
 
-| Setting | Value |
+The subnet is protected by:
+
+`nsg-spoke-workloads-01`
+
+and associated with:
+
+`rt-spoke-to-hub-01`
+
+The route table contains the following default route:
+
+| Property | Value |
 |---|---|
-| VM Name | `vm-spoke-app-02` |
+| Route | `default-to-firewall` |
+| Destination | `0.0.0.0/0` |
+| Next Hop Type | Virtual Appliance |
+| Next Hop IP | `10.0.1.4` |
+
+The next-hop address corresponds to the private IP of:
+
+`afw-hub-prod-01`
+
+The resulting outbound traffic path is:
+
+```text
+Workload VM
+     |
+     v
+snet-app-01
+     |
+     v
+rt-spoke-to-hub-01
+     |
+     | 0.0.0.0/0
+     v
+Azure Firewall
+10.0.1.4
+     |
+     v
+Allowed Destination
+```
+
+This integrates the compute layer with the centralized security architecture implemented in the Hub.
+
+---
+
+## 🖥️ Secondary Workload Virtual Machine
+
+A second Windows Server workload was deployed to demonstrate zone-aware compute:
+
+`vm-spoke-app-02`
+
+| Property | Value |
+|---|---|
+| Virtual Machine | `vm-spoke-app-02` |
 | Resource Group | `rg-spoke-prod-01` |
 | Region | East US 2 |
 | Availability Zone | Zone 1 |
 | Operating System | Windows Server 2022 Datacenter |
-| Public IP | None |
+| VM Size | `Standard_D2als_v7` |
 | Virtual Network | `vnet-spk-workloads-01` |
 | Subnet | `snet-app-01` |
-| Private IP | `10.1.1.4` |
+| Public IP | None |
 
-The virtual machine was deployed without a public IP address and placed directly inside Availability Zone 1.
-
-Using an Availability Zone demonstrates how workloads can be distributed across physically separated datacenter locations within an Azure region.
-
-### VM Evidence
+### 📸 Secondary VM Evidence
 
 ![vm-spoke-app-02](../../images/vm-spoke-app-02.png)
 
-![Azure VM Availability Zone](../../images/compute-vm-zone-01.png)
+*Secondary application workload `vm-spoke-app-02` deployed inside the production Spoke.*
 
-*`vm-spoke-app-02` deployed in East US 2*
 ---
 
-## 5. Azure Managed Disks
+## 🌎 Availability Zone
 
-A dedicated managed data disk was attached to `vm-spoke-app-02` to demonstrate separation between operating system and application/data storage.
+`vm-spoke-app-02` was explicitly deployed in **Availability Zone 1** within East US 2.
 
-### Data Disk Configuration
+Availability Zones provide physically separated datacenter infrastructure within an Azure region.
 
-| Setting | Value |
+A zone-aware architecture can distribute workloads across independent infrastructure boundaries to reduce the impact of datacenter-level failures.
+
+Conceptually:
+
+```text
+                  East US 2
+                      |
+          +-----------+-----------+
+          |           |           |
+          v           v           v
+        Zone 1      Zone 2      Zone 3
+          |
+          v
+ vm-spoke-app-02
+```
+
+### 📸 Availability Zone Evidence
+
+![Azure VM Availability Zone](../../images/compute-vm-zone-01.png)
+
+*`vm-spoke-app-02` deployed in East US 2 Availability Zone 1.*
+
+---
+
+## 💾 Azure Managed Disk
+
+An additional Managed Disk was attached to `vm-spoke-app-02` to separate application data from the operating system disk.
+
+| Property | Value |
 |---|---|
 | Disk Name | `disk-app-data-01` |
-| Disk Type | Azure Managed Disk |
 | Storage Type | Standard SSD LRS |
 | Size | 32 GiB |
+| LUN | 0 |
+| Max IOPS | 500 |
+| Max Throughput | 100 MB/s |
+| Encryption | SSE with PMK |
 | Host Caching | None |
 | Attached VM | `vm-spoke-app-02` |
 
-Using a separate managed data disk allows workload data to be managed independently from the operating system disk.
-
-Azure Managed Disks also abstract the underlying storage account management required for virtual machine disks.
-
-### Managed Disk Evidence
-
-![Azure Managed Data Disk](../../images/vm-data-disk.png)
-
-*Managed data disk `disk-app-data-01` attached to `vm-spoke-app-02` alongside the operating system disk.*
-
----
-
-## 6. Availability Set
-
-An Availability Set was created to demonstrate the traditional Azure VM high-availability model based on Fault Domains and Update Domains.
-
-### Configuration
-
-| Setting | Value |
-|---|---|
-| Availability Set | `avset-app-prod-01` |
-| Region | East US 2 |
-| Fault Domains | 2 |
-| Update Domains | 3 |
-| Managed Disks | Yes |
-
-The Availability Set was created as a separate availability design demonstration.
-
-`vm-spoke-app-02` was **not** placed inside the Availability Set because the VM was deployed using an Availability Zone. Availability Zones and Availability Sets represent different placement strategies.
-
-### Availability Set Evidence
-
-![Azure Availability Set](../../images/avset-app-prod-01.png)
-
-*`avset-app-prod-01` configured with two Fault Domains, three Update Domains, and Managed Disks.*
-
----
-
-## 7. Availability Strategy
-
-Two Azure availability models were demonstrated during the project.
-
-### Availability Zones
-
-Availability Zones provide datacenter-level isolation within an Azure region.
-
-The workload:
+The resulting storage model is:
 
 ```text
 vm-spoke-app-02
+       |
+       +-------------------+
+       |                   |
+       v                   v
+    OS Disk         disk-app-data-01
+                         32 GiB
 ```
 
-was deployed in:
+Separating workload data from the operating system disk provides greater flexibility for storage management, resizing, backup, and workload lifecycle operations.
 
-```text
-East US 2 - Zone 1
-```
+Storage Service Encryption with platform-managed keys protects the disk data at rest.
 
-This model is appropriate when workloads need protection against failures affecting an individual datacenter location.
+### 📸 Managed Disk Evidence
 
-### Availability Sets
+![Azure Managed Data Disk](../../images/vm-data-disk.png)
 
-Availability Sets distribute virtual machines across:
-
-- Fault Domains
-- Update Domains
-
-This reduces the probability that multiple workload instances become unavailable simultaneously because of hardware failure or planned platform maintenance.
-
-The project created:
-
-```text
-avset-app-prod-01
-```
-
-to demonstrate this alternative availability model.
+*Standard SSD LRS data disk `disk-app-data-01` attached to `vm-spoke-app-02`.*
 
 ---
 
-## 8. Virtual Machine Scale Set
+## 🏢 Availability Set
 
-Azure Virtual Machine Scale Sets were also implemented to demonstrate scalable compute architecture.
+An Azure Availability Set was created to demonstrate the traditional Azure VM resiliency model:
 
-### VMSS Configuration
+`avset-app-prod-01`
 
-| Setting | Value |
+| Property | Value |
+|---|---|
+| Availability Set | `avset-app-prod-01` |
+| Resource Group | `rg-spoke-prod-01` |
+| Region | East US 2 |
+| Fault Domains | 2 |
+| Update Domains | 3 |
+| Managed | Yes |
+
+Availability Sets distribute participating virtual machines across **Fault Domains** and **Update Domains**.
+
+### Fault Domains
+
+Fault Domains provide logical separation across underlying infrastructure that can experience independent hardware, power, or network failures.
+
+### Update Domains
+
+Update Domains separate participating virtual machines during planned Azure platform maintenance.
+
+The Availability Set was deployed as an architectural demonstration and does not contain the zone-based workload VM.
+
+Availability Sets and Availability Zones were therefore demonstrated independently.
+
+### 📸 Availability Set Evidence
+
+![Azure Availability Set](../../images/avset-app-prod-01.png)
+
+*`avset-app-prod-01` configured with two Fault Domains and three Update Domains.*
+
+---
+
+## 📈 Virtual Machine Scale Set
+
+A Virtual Machine Scale Set was deployed to demonstrate scalable application compute:
+
+`vmss-app-prod-01`
+
+| Property | Value |
 |---|---|
 | Scale Set | `vmss-app-prod-01` |
 | Resource Group | `rg-spoke-prod-01` |
 | Region | East US 2 |
-| Orchestration Mode | Flexible |
+| Operating System | Windows |
+| VM Size | `Standard_D2als_v7` |
 | Virtual Network | `vnet-spk-workloads-01` |
 | Subnet | `snet-app-01` |
+| Orchestration Mode | Flexible |
+| Scaling | Manual |
+| Availability Zones | 1, 2, 3 |
+| OS Disk | Standard SSD LRS |
 
-The Scale Set was deployed using Flexible orchestration.
+Virtual Machine Scale Sets provide a platform for managing multiple VM instances as a scalable compute tier.
 
-Virtual Machine Scale Sets provide a platform for deploying and managing groups of virtual machines while supporting workload scaling and high availability.
+Conceptually:
 
-For the project, a minimal deployment was used to validate the architecture while controlling Azure consumption.
+```text
+Application Demand
+        |
+        v
++----------------------+
+| VM Scale Set         |
+| vmss-app-prod-01     |
++----------------------+
+        |
+   +----+----+
+   |         |
+   v         v
+Instance   Instance
+```
 
-### VM Scale Set Evidence
+Flexible orchestration provides greater control over individual VM instances while maintaining the management capabilities of a scale set.
+
+### 📸 VM Scale Set Evidence
 
 ![Azure Virtual Machine Scale Set](../../images/vmss-app-prod-01.png)
 
-*`vmss-app-prod-01` deployed using Flexible orchestration within the workload Spoke VNet.*
+*`vmss-app-prod-01` deployed inside the Spoke workload network using Flexible orchestration.*
 
 ---
 
-## 9. Compute Architecture
+## 🔄 Availability & Scalability Strategy
 
-The resulting compute design demonstrates multiple workload deployment strategies:
+The compute environment demonstrates several Azure deployment models:
+
+| Technology | Purpose |
+|---|---|
+| Standalone VM | Individual application workload |
+| Availability Zone | Datacenter-level infrastructure isolation |
+| Availability Set | Fault and Update Domain distribution |
+| VM Scale Set | Multi-instance scalable compute |
+| Managed Disk | Independent persistent workload storage |
+
+These technologies address different infrastructure requirements and were implemented independently where appropriate.
+
+The objective was not to combine every availability technology into a single workload, but to demonstrate the architectural purpose and implementation of each Azure compute model.
+
+---
+
+## 🔐 Security Design
+
+The compute layer integrates with the security controls established throughout the DmonTech architecture.
+
+### Private Workloads
+
+The standalone workload VMs were deployed without public IP addresses.
+
+### Secure Administrative Access
+
+Administrative connectivity is provided through Azure Bastion rather than exposing TCP/3389 directly to the Internet.
+
+### Network Segmentation
+
+Application workloads are isolated inside:
+
+`vnet-spk-workloads-01/snet-app-01`
+
+### Subnet-Level Protection
+
+The workload subnet is protected by:
+
+`nsg-spoke-workloads-01`
+
+### Centralized Traffic Inspection
+
+The User Defined Route sends Internet-bound workload traffic toward Azure Firewall:
 
 ```text
-                     Azure Region
-                       East US 2
-                           |
-          +----------------+----------------+
-          |                                 |
-          v                                 v
-   Availability Zone                 Availability Set
-        Zone 1                       avset-app-prod-01
-          |                         FD / UD distribution
-          v
-   vm-spoke-app-02
-          |
-          +-------------------+
-          |                   |
-          v                   v
-       OS Disk         disk-app-data-01
-                      Standard SSD LRS
-
-
-             Scalable Compute Model
-                      |
-                      v
-             vmss-app-prod-01
-                      |
-                      v
-              Flexible Mode
+0.0.0.0/0
+     |
+     v
+10.0.1.4
+     |
+     v
+afw-hub-prod-01
 ```
 
-These components demonstrate three different compute design considerations:
+### Encryption at Rest
 
-- Individual virtual machine deployment.
-- High availability.
-- Horizontal scalability.
+Azure Managed Disks use Storage Service Encryption to protect persistent data.
 
----
-
-## 10. Security Considerations
-
-The compute architecture was designed around workload isolation.
-
-Key security decisions included:
-
-- No public IP assigned to workload VMs.
-- Workloads deployed inside the Spoke network.
-- Subnet-level protection using Network Security Groups.
-- Centralized routing through the Hub architecture.
-- Separation of operating system and data disks.
-- Private IP addressing for application workloads.
-
-These controls reduce direct Internet exposure and support the broader Zero Trust architecture implemented throughout the project.
+Together, these controls create a layered security model around the compute environment.
 
 ---
 
-## 11. Cost Optimization
+## 🧠 Architectural Decisions
 
-Compute resources were treated as temporary infrastructure where persistent operation was not required.
+### Why Deploy Compute in the Spoke?
 
-The VM Scale Set and other temporary compute resources were removed after their configuration and validation were documented.
+Application workloads were deployed in the Spoke instead of the Hub to maintain separation between workload compute and centralized infrastructure.
 
-`vm-spoke-app-02` was retained temporarily because it was subsequently used to validate:
+The Hub remains responsible for shared networking and security services, while the Spoke hosts application resources.
 
-- Azure Load Balancer.
-- Azure Application Gateway.
-- Azure Managed Disks.
-- Azure Backup.
-- Azure VM Restore.
+This provides:
 
-After these tests were completed, the temporary compute infrastructure was removed to prevent unnecessary Azure consumption.
+- Clear workload isolation
+- Centralized security services
+- Easier network expansion
+- Reduced infrastructure coupling
+- Consistent security enforcement
+- A scalable foundation for additional Spokes
 
-This approach demonstrates lifecycle-aware cloud resource management rather than leaving unused infrastructure provisioned.
+### Why Use Availability Zones?
+
+Availability Zones provide physical datacenter-level separation and represent the preferred resiliency model for supported workloads requiring zone-level protection.
+
+### Why Demonstrate an Availability Set?
+
+Availability Sets remain an important Azure compute concept and demonstrate Fault Domain and Update Domain distribution for workloads not using Availability Zones.
+
+### Why Deploy a VM Scale Set?
+
+VM Scale Sets demonstrate how the application tier can evolve beyond individually managed virtual machines into a multi-instance compute architecture capable of supporting horizontal scaling.
 
 ---
 
-## 12. Validation Summary
+## 💰 Cost Management
 
-The following Azure Compute capabilities were implemented and validated:
+Compute resources generate ongoing Azure consumption while provisioned and running.
 
-| Capability | Validation |
+Because DmonTech is implemented as a laboratory architecture, resources were managed using a controlled lifecycle:
+
+```text
+Design
+   |
+   v
+Deploy
+   |
+   v
+Configure
+   |
+   v
+Validate
+   |
+   v
+Document
+   |
+   v
+Stop / Remove Temporary Resources
+```
+
+Additional cost considerations included:
+
+- Appropriately sized VM SKUs.
+- Standard SSD storage where Premium performance was unnecessary.
+- No public IPs on standalone workload VMs.
+- Manual VMSS scaling for the laboratory.
+- Removal or shutdown of temporary compute resources after validation.
+
+This approach allows enterprise Azure compute technologies to be demonstrated while controlling unnecessary laboratory consumption.
+
+---
+
+## ✅ Validation
+
+The following compute capabilities were successfully implemented or demonstrated:
+
+| Capability | Status |
 |---|---|
-| Azure Virtual Machine | Completed |
-| Private workload deployment | Completed |
-| Availability Zone | Completed |
-| Managed OS Disk | Completed |
-| Managed Data Disk | Completed |
-| Availability Set | Completed |
-| Fault Domains | Configured |
-| Update Domains | Configured |
-| Virtual Machine Scale Set | Completed |
-| Flexible Orchestration | Configured |
-| Forced tunneling | Validated |
-| Private administrative access | Validated |
+| `vm-spoke-app-01` | Completed |
+| `vm-spoke-app-02` | Completed |
+| Private standalone VM deployment | Completed |
+| Windows Server 2022 workloads | Completed |
+| Spoke VNet integration | Completed |
+| NSG protection | Completed |
+| Centralized UDR architecture | Completed |
+| Azure Bastion administration | Validated |
+| Availability Zone deployment | Completed |
+| `disk-app-data-01` | Completed |
+| Managed Disk attachment | Completed |
+| `avset-app-prod-01` | Completed |
+| Fault / Update Domain configuration | Completed |
+| `vmss-app-prod-01` | Completed |
+| Flexible orchestration | Completed |
 
 ---
 
-## 13. Lessons Learned
+## 📚 Lessons Learned
 
-Azure provides multiple compute availability models that solve different infrastructure requirements.
+Azure compute architecture requires more than simply deploying virtual machines.
 
-Availability Zones provide physical datacenter-level separation, while Availability Sets distribute traditional VM deployments across Fault Domains and Update Domains.
+Workload placement must be designed together with networking, routing, administrative access, storage, availability, scalability, security, and cost.
 
-Virtual Machine Scale Sets address a different requirement by providing a scalable compute model capable of managing multiple VM instances.
+Availability Zones and Availability Sets address different resiliency models. Availability Zones provide physical datacenter separation, while Availability Sets distribute participating workloads across Fault and Update Domains.
 
-The implementation also demonstrated that compute architecture cannot be designed independently from networking, security, backup, and cost management. The same workload used during this phase later became the backend target for load-balancing services and the protected workload for Azure Backup.
+Managed Disks provide independent persistent storage for application data, while Virtual Machine Scale Sets provide a foundation for multi-instance and horizontally scalable compute architectures.
 
-Finally, subscription quotas and regional SKU availability must be considered during architecture planning because they can directly affect deployment decisions.
+Deploying these resources inside a dedicated Spoke also demonstrated the value of separating application workloads from centralized networking and security infrastructure.
 
 ---
 
-## Result
+## 🏁 Result
 
-The DmonTech Spoke environment successfully demonstrated Azure compute deployment, availability, storage integration, scalability, network isolation, and workload lifecycle management.
+The DmonTech Azure environment successfully implemented a dedicated compute tier inside the production Spoke network.
 
 The implementation included:
 
-- Private Azure virtual machines.
-- Availability Zone placement.
-- Availability Set configuration.
-- Fault and Update Domains.
+- Private Windows Server virtual machines.
+- Availability Zone deployment.
 - Azure Managed Disks.
-- Virtual Machine Scale Sets.
-- Forced tunneling through centralized network security.
-- Integration with Azure Backup and application delivery services.
+- Availability Set architecture.
+- Fault and Update Domains.
+- Virtual Machine Scale Set.
+- Flexible orchestration.
+- NSG-protected workload networking.
+- Centralized routing through Azure Firewall.
+- Secure administrative access through Azure Bastion.
+- Integration with the existing Hub-and-Spoke architecture.
 
-Together, these components provide the compute foundation for the DmonTech hybrid Azure architecture.
+The resulting environment demonstrates how Azure compute workloads can be deployed with network isolation, centralized security, availability, scalability, and storage considerations while maintaining a consistent enterprise architecture.

@@ -1,111 +1,242 @@
-# Azure Policy
+# 🛡️ Azure Policy Governance
 
-## Overview
+## 📌 Business Requirement
 
-Azure Policy was implemented to enforce organizational governance standards across the DmonTech Azure environment.
+DmonTech requires centralized governance controls to ensure that Azure resources are deployed according to organizational standards.
 
-The primary objective was to ensure that Azure resources are deployed only within approved regions, reducing operational risk, maintaining compliance, and preventing accidental deployments in unsupported locations.
+The organization requires:
 
-Azure Policy provides centralized governance by continuously evaluating Azure resources against predefined rules and automatically denying or auditing non-compliant deployments.
+- Standardized resource deployments.
+- Restriction of Azure resource creation to approved regions.
+- Reduced configuration drift.
+- Improved governance across the Azure subscription.
+- Prevention of accidental deployments in unsupported locations.
+- A foundation for future compliance and auditing initiatives.
 
----
-
-# Business Requirements
-
-The organization required:
-
-- Standardize resource deployments.
-- Restrict Azure resource creation to approved regions.
-- Reduce configuration drift.
-- Improve governance across Azure subscriptions.
-- Support future compliance and auditing initiatives.
+Without centralized policy enforcement, administrators could deploy resources into unintended Azure regions, resulting in inconsistent architecture, increased operational complexity, and potential compliance issues.
 
 ---
 
-# Solution Overview
+## 🎯 Objective
 
-An Azure Policy Assignment was created at the subscription level using the built-in **Allowed locations** policy definition.
+The objective of this implementation is to use Azure Policy to enforce regional deployment standards across the DmonTech Azure environment.
 
-Policy Scope
+A built-in **Allowed locations** policy was assigned at the subscription level to restrict resource deployment to the organization's approved Azure region:
 
-```
-Azure Subscription
-```
-
-Policy Definition
-
-```
-Allowed locations
-```
-
-Allowed Region
-
-```
+```text
 East US 2
 ```
 
-Effect
+Resources targeting non-approved regions are automatically denied by Azure Policy.
 
+---
+
+## 🏗️ Architecture
+
+Azure Policy provides a centralized governance layer that evaluates Azure resource deployments against predefined organizational rules.
+
+The implemented governance model is:
+
+```text
+Azure Subscription
+        |
+        v
+   Azure Policy
+        |
+        v
+ Allowed locations
+        |
+        v
+    East US 2
+        |
+   +----+----+
+   |         |
+   v         v
+Compliant  Non-Compliant
+   |         |
+   v         v
+ Allowed    Denied
 ```
-Deny
+
+The policy is assigned at the subscription scope, ensuring that applicable resource deployments within the subscription are evaluated against the regional restriction.
+
+---
+
+## ⚙️ Policy Configuration
+
+The built-in Azure Policy definition **Allowed locations** was used.
+
+| Setting | Value |
+|---|---|
+| Policy Assignment | `Allowed locations` |
+| Definition Type | Built-in Policy |
+| Scope | Azure Subscription |
+| Allowed Location | `East US 2` |
+| Parameter Value | `eastus2` |
+| Effect | `Deny` |
+| Policy Enforcement | Default |
+| Excluded Scopes | None |
+| Exemptions | None |
+
+Using a built-in policy definition avoids unnecessary custom policy development while providing a Microsoft-maintained governance control for regional restrictions.
+
+---
+
+## 🛡️ Policy Enforcement
+
+The policy uses the `Deny` effect.
+
+When a deployment request targets a location outside the approved region, Azure Policy evaluates the request before resource creation and prevents the non-compliant deployment.
+
+```text
+Resource Deployment Request
+           |
+           v
+    Azure Policy Evaluation
+           |
+     +-----+-----+
+     |           |
+     v           v
+  East US 2   Other Region
+     |           |
+     v           v
+   Allow        Deny
 ```
 
-Applying the policy at the subscription level ensures that every future deployment is evaluated before resource creation.
+This converts the organization's regional deployment requirement from an administrative guideline into an enforceable technical control.
 
 ---
 
-# Policy Assignment
+## 🔐 Governance
 
-The policy was assigned using Azure Policy's built-in definitions.
+Azure Policy introduces centralized governance into the DmonTech Azure architecture.
 
-Configuration included:
+Key governance controls include:
 
-- Subscription Scope
-- Built-in Policy Definition
-- East US 2 as the only approved deployment region
-- Deny effect for non-compliant resources
+- Subscription-level policy assignment.
+- Centralized regional restrictions.
+- Automatic evaluation of resource deployments.
+- Denial of non-compliant deployments.
+- Consistent enforcement regardless of administrator.
+- No policy exemptions configured.
+- No excluded scopes configured.
 
-This approach prevents administrators from accidentally deploying infrastructure outside the organization's approved Azure region.
+This reduces reliance on administrators manually following deployment standards.
 
----
-
-# Validation
-
-The following validations were completed:
-
-- Azure Policy successfully assigned.
-- Policy applied at subscription scope.
-- Allowed deployment region configured.
-- Deny enforcement enabled.
-
-The environment is now governed by centralized deployment restrictions.
+Instead, Azure itself enforces the required configuration.
 
 ---
 
-# Governance Benefits
+## 📸 Evidence
 
-Using Azure Policy provides several operational advantages:
+### Allowed Locations Policy Assignment
 
-- Standardized deployments.
-- Improved governance.
-- Reduced human error.
-- Easier regulatory compliance.
-- Consistent Azure architecture.
-- Better long-term operational management.
+![Azure Policy Allowed Locations](../../images/allowed-locations-policy-overview.png)
+
+*Azure Policy `Allowed locations` assigned at subscription scope with `eastus2` configured as the approved location and the `Deny` effect enabled.*
 
 ---
 
-# Lessons Learned
+## 🧠 Architectural Decisions
 
-Azure Policy is one of the foundational governance services within Azure.
+### Subscription-Level Assignment
 
-Rather than relying on administrative procedures, Azure Policy enforces organizational standards automatically before resources are deployed.
+The policy was assigned at the Azure subscription level rather than to an individual Resource Group.
 
-Applying policies at the subscription level simplifies governance and ensures consistent configuration across future Azure resources.
+This provides broader governance coverage and ensures that applicable future deployments across the subscription inherit the regional restriction automatically.
+
+### Built-In Policy Definition
+
+The Microsoft built-in **Allowed locations** policy was selected instead of creating a custom policy definition.
+
+The existing policy already provides the required functionality and reduces unnecessary administrative complexity.
+
+### Single Approved Region
+
+`East US 2` was selected as the approved deployment region because the DmonTech Azure infrastructure was standardized around this region.
+
+Maintaining a consistent primary region simplifies:
+
+- Network architecture.
+- Resource organization.
+- Operational management.
+- Troubleshooting.
+- Cost analysis.
+- Governance.
+
+### Deny Enforcement
+
+The `Deny` effect was selected instead of using an audit-only configuration.
+
+An audit policy would identify non-compliant resources but would still allow them to be created.
+
+Using `Deny` proactively prevents configuration drift before it occurs.
 
 ---
 
-# Screenshots
+## 💰 Cost Management
 
--Azure Policy Allowed Locations configuration
-![Azure Policy Allowed Locations configuration](../../images/allowed-locations-policy-overview.png)
+Azure Policy governance can indirectly support cost management by preventing accidental resource deployments outside the organization's intended architecture.
+
+Regional standardization helps reduce:
+
+- Unplanned infrastructure deployment.
+- Resource sprawl.
+- Operational complexity.
+- Accidental cross-region architectures.
+- Unexpected networking patterns and associated costs.
+
+The policy itself introduces governance without requiring dedicated infrastructure such as virtual machines or network appliances.
+
+---
+
+## ✅ Validation
+
+The Azure Policy implementation was validated with the following configuration:
+
+| Validation | Status |
+|---|---|
+| Azure Policy Assignment Created | ✅ Completed |
+| Built-In `Allowed locations` Policy Used | ✅ Completed |
+| Subscription Scope Applied | ✅ Completed |
+| `East US 2` Allowed | ✅ Configured |
+| `Deny` Effect Enabled | ✅ Configured |
+| Policy Enforcement Enabled | ✅ Completed |
+| Excluded Scopes | ✅ None |
+| Policy Exemptions | ✅ None |
+
+The environment is now governed by a centralized regional deployment restriction.
+
+---
+
+## 📚 Lessons Learned
+
+Azure Policy is a foundational governance service for enforcing organizational standards across Azure environments.
+
+Administrative documentation alone cannot guarantee that infrastructure will follow architectural requirements.
+
+Azure Policy converts those requirements into technical controls that Azure evaluates during resource deployment.
+
+Applying policies at higher scopes such as the subscription level also simplifies governance because future resources automatically fall under the established organizational rules.
+
+The implementation demonstrates an important distinction between monitoring compliance and actively enforcing it.
+
+Using the `Deny` effect prevents configuration drift before resources are created rather than detecting the problem afterward.
+
+---
+
+## 🏁 Result
+
+DmonTech successfully implemented centralized Azure governance using Azure Policy.
+
+The final configuration provides:
+
+- Subscription-level governance.
+- Built-in Azure Policy enforcement.
+- `East US 2` regional standardization.
+- Automatic evaluation of resource deployments.
+- Prevention of deployments into unauthorized regions.
+- Reduced configuration drift.
+- A governance foundation for future compliance controls.
+
+Azure Policy now acts as a preventive governance layer within the DmonTech environment, ensuring that applicable infrastructure deployments remain aligned with the organization's regional architecture standards.

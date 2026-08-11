@@ -1,18 +1,33 @@
-# Azure Load Balancing and Application Delivery
-
-## Executive Summary
-
-The DmonTech Azure networking architecture was extended with Azure Load Balancer and Azure Application Gateway to demonstrate Layer 4 and Layer 7 application delivery capabilities.
-
-Azure Load Balancer was implemented to provide internal TCP traffic distribution to workloads inside the Spoke network.
-
-Azure Application Gateway was then deployed to demonstrate HTTP-based Layer 7 application delivery using a dedicated Application Gateway subnet and a public frontend.
-
-Together, these services demonstrate two different traffic distribution models available within Azure.
+# ⚖️ Phase 5 — Azure Load Balancing and Application Delivery
 
 ---
 
-## 1. Architecture Overview
+# 📌 Business Requirement
+
+As DmonTech expands its Azure environment, application workloads require scalable traffic distribution mechanisms that can support both internal services and web-facing applications.
+
+The organization requires technologies capable of distributing traffic across backend workloads while maintaining separation between application delivery infrastructure and production compute resources.
+
+Azure Load Balancer and Azure Application Gateway were implemented to demonstrate Layer 4 and Layer 7 traffic distribution within the Azure environment.
+
+---
+
+# 🎯 Objective
+
+Deploy and configure Azure-native load-balancing services to demonstrate two different application delivery models:
+
+- Layer 4 TCP traffic distribution using Azure Load Balancer.
+- Layer 7 HTTP application delivery using Azure Application Gateway.
+- Private frontend connectivity for internal workloads.
+- Dedicated networking for Application Gateway.
+- Backend health monitoring.
+- Integration with the existing Spoke workload network.
+
+The services were deployed independently to demonstrate their respective capabilities rather than being unnecessarily chained together.
+
+---
+
+# 🏗️ Architecture Overview
 
 The implementation included:
 
@@ -28,69 +43,86 @@ The implementation included:
 | Application Gateway SKU | Standard_v2 |
 | Application Gateway Subnet | `snet-appgw-01` |
 | Application Gateway Public IP | `pip-agw-app-prod-01` |
-| Backend Workload | `vm-spoke-app-02` |
+| Virtual Network | `vnet-spk-workloads-01` |
 
-The workload VM was located inside the Spoke workload network and was used as the backend target during the implementation.
+Both services were deployed in `rg-spoke-prod-01` in East US 2.
 
 ---
 
-# Azure Load Balancer
+# 🔄 Azure Load Balancer
 
-## 2. Internal Load Balancer
+## Internal Load Balancer
 
-Azure Standard Load Balancer was deployed as an internal load-balancing service.
+Azure Standard Load Balancer was deployed to demonstrate private Layer 4 traffic distribution inside the Spoke environment.
 
-The resource was configured as:
+| Property | Value |
+|---|---|
+| Name | `lb-app-prod-01` |
+| Resource Group | `rg-spoke-prod-01` |
+| Region | East US 2 |
+| SKU | Standard |
+| Tier | Regional |
+| Type | Internal |
+| Frontend IP | `10.1.1.6` |
+| Backend Pool | `be-app-01` |
+| Backend Instances | 1 |
+| Health Probe | `hp-http-01` |
+| Load Balancing Rule | `rule-http-01` |
 
-```text
-lb-app-prod-01
-```
+The Load Balancer used a private frontend IP address rather than exposing the workload directly to the Internet.
 
-The Load Balancer used a private frontend address:
+---
+
+# 🌐 Private Frontend
+
+The Load Balancer frontend was configured with the private address:
 
 ```text
 10.1.1.6
 ```
 
-Because the Load Balancer was internal, traffic distribution occurred through private networking rather than through a public Internet-facing frontend.
-
----
-
-## 3. Backend Pool
-
-A backend pool was created:
+The resulting traffic model is:
 
 ```text
-be-app-01
-```
-
-The backend pool contained the application workload used during the project.
-
-The purpose of the backend pool is to define the compute resources capable of receiving traffic from the Load Balancer.
-
-Conceptually:
-
-```text
-Client
-   |
-   v
+Internal Client
+      |
+      v
 10.1.1.6
-   |
-   v
+      |
+      v
 Azure Load Balancer
-   |
-   v
+lb-app-prod-01
+      |
+      v
 be-app-01
-   |
-   v
+      |
+      v
 Application Workload
 ```
 
+Because the frontend is private, the Load Balancer provides internal application delivery without requiring a public-facing endpoint.
+
 ---
 
-## 4. Health Probe
+# 🖥️ Backend Pool
 
-A TCP health probe was configured:
+The backend pool was configured as:
+
+```text
+be-app-01
+```
+
+During the lab, the backend pool contained one virtual machine.
+
+The backend pool defines the compute resources eligible to receive traffic distributed through the Load Balancer.
+
+In a production deployment, additional backend instances could be added to provide greater scalability and availability.
+
+---
+
+# ❤️ Health Probe
+
+A health probe was configured to monitor backend availability.
 
 | Setting | Value |
 |---|---|
@@ -98,15 +130,15 @@ A TCP health probe was configured:
 | Protocol | TCP |
 | Port | 80 |
 
-The health probe allows Azure Load Balancer to determine whether backend instances are available to receive traffic.
+The probe allows Azure Load Balancer to determine whether a backend instance is capable of receiving TCP connections on port 80.
 
-Unhealthy backend instances can therefore be excluded from traffic distribution.
+In a multi-instance production deployment, unhealthy backend instances can be excluded from new traffic distribution until they become healthy again.
 
 ---
 
-## 5. Load Balancing Rule
+# 📋 Load Balancing Rule
 
-The following rule was configured:
+The following load-balancing rule was configured:
 
 | Setting | Value |
 |---|---|
@@ -117,161 +149,129 @@ The following rule was configured:
 | Backend Pool | `be-app-01` |
 | Health Probe | `hp-http-01` |
 
-This configuration demonstrates Layer 4 traffic distribution based on TCP connections.
+The configuration demonstrates Layer 4 traffic distribution based on TCP connectivity.
 
-### Load Balancer Evidence
+Azure Load Balancer does not inspect HTTP application content when making its forwarding decisions.
 
-<!-- SCREENSHOT 1: lb-app-prod-01 Overview -->
+---
+
+# 📸 Azure Load Balancer Evidence
 
 ![Azure Internal Load Balancer](../../images/lb-app-prod-01.png)
 
-*Azure Standard Internal Load Balancer `lb-app-prod-01` configured with private frontend `10.1.1.6`, backend pool, TCP/80 health probe, and TCP/80 load-balancing rule.*
+*Azure Standard Load Balancer `lb-app-prod-01` configured with private frontend `10.1.1.6`, backend pool `be-app-01`, TCP/80 health probe `hp-http-01`, and TCP/80 load-balancing rule `rule-http-01`.*
 
 ---
 
-# Azure Application Gateway
+# 🌍 Azure Application Gateway
 
-## 6. Application Gateway Deployment
+## Application Gateway Deployment
 
-Azure Application Gateway was deployed to demonstrate Layer 7 application delivery.
+Azure Application Gateway was deployed to demonstrate Layer 7 application delivery for HTTP-based workloads.
 
-The resource created was:
-
-```text
-agw-app-prod-01
-```
-
-Configuration:
-
-| Setting | Value |
+| Property | Value |
 |---|---|
-| Application Gateway | `agw-app-prod-01` |
-| SKU | Standard_v2 |
+| Name | `agw-app-prod-01` |
+| Resource Group | `rg-spoke-prod-01` |
 | Region | East US 2 |
-| Availability Zones | 1, 2, 3 |
+| SKU | Standard_v2 |
 | Virtual Network | `vnet-spk-workloads-01` |
 | Dedicated Subnet | `snet-appgw-01` |
 | Frontend Type | Public |
-| Public IP | `pip-agw-app-prod-01` |
-| Protocol | HTTP |
-| Port | 80 |
+| Public IP Resource | `pip-agw-app-prod-01` |
+| Availability Zones | 1, 2, 3 |
 
-The Standard_v2 deployment used a public frontend for the lab implementation.
+Unlike the internal Load Balancer, the Application Gateway was configured with a public frontend for the laboratory implementation.
+
+Backend workloads themselves did not require direct public IP addresses.
 
 ---
 
-## 7. Dedicated Application Gateway Subnet
+# 🏗️ Dedicated Application Gateway Subnet
 
-Application Gateway requires dedicated subnet capacity.
-
-A separate subnet was therefore created:
+Application Gateway was deployed into its own dedicated subnet:
 
 ```text
 snet-appgw-01
 ```
 
-This keeps the Application Gateway infrastructure separated from the application workload subnet.
-
-The network design follows:
+The network design separates application delivery infrastructure from application workloads:
 
 ```text
 vnet-spk-workloads-01
-│
-├── snet-app-01
-│      |
-│      └── Application Workloads
-│
-└── snet-appgw-01
-       |
-       └── agw-app-prod-01
+        |
+        +---------------------------+
+        |                           |
+        v                           v
+   snet-app-01                snet-appgw-01
+        |                           |
+        v                           v
+Application Workloads       Application Gateway
+                            agw-app-prod-01
 ```
 
-Separating application delivery infrastructure from workload compute provides a cleaner network architecture and supports independent service management.
+This separation provides a cleaner network architecture and allows the Application Gateway infrastructure to be managed independently from backend compute resources.
 
 ---
 
-## 8. Application Gateway Traffic Flow
+# 🌐 Public Frontend
 
-Application Gateway operates at Layer 7 and can make routing decisions using HTTP/HTTPS information.
+Application Gateway was configured with the public IP resource:
 
-The lab traffic flow was designed as:
+```text
+pip-agw-app-prod-01
+```
+
+The public frontend provides an Internet-reachable entry point while allowing backend workloads to remain privately addressed.
+
+Conceptually:
 
 ```text
 Internet
-   |
-   v
+    |
+    v
+Public Frontend
 pip-agw-app-prod-01
-   |
-   v
-+----------------------+
-| Application Gateway  |
-| agw-app-prod-01      |
-+----------------------+
-   |
-   | HTTP :80
-   v
-Backend Pool
-   |
-   v
-vm-spoke-app-02
-10.1.1.4
+    |
+    v
+Application Gateway
+agw-app-prod-01
+    |
+    v
+Private Backend Workload
 ```
 
-An HTTP listener received frontend traffic and forwarded requests toward the configured backend workload.
+This architecture separates public application delivery from the backend workload itself.
 
 ---
 
-## 9. Backend Configuration
+# 🧠 Layer 7 Application Delivery
 
-The application workload was configured as the backend target for Application Gateway.
+Application Gateway operates at Layer 7 and is designed specifically for HTTP and HTTPS workloads.
 
-```text
-vm-spoke-app-02
-```
+Unlike Azure Load Balancer, Application Gateway understands web application traffic and can support capabilities such as:
 
-Private address:
+- HTTP/HTTPS listeners
+- Host-based routing
+- Path-based routing
+- TLS termination
+- Backend health monitoring
+- Cookie-based session affinity
+- Web Application Firewall when using a WAF-enabled SKU
 
-```text
-10.1.1.4
-```
-
-The backend HTTP configuration used port:
-
-```text
-80
-```
-
-This demonstrated the relationship between:
-
-```text
-Frontend
-   |
-Listener
-   |
-Routing Rule
-   |
-Backend Pool
-   |
-Backend Setting
-   |
-Application Workload
-```
+The lab used the Standard_v2 SKU to demonstrate the core Application Gateway architecture without deploying the WAF SKU.
 
 ---
 
-## 10. Application Gateway Evidence
-
-### Application Gateway Overview
-
-<!-- SCREENSHOT 2: agw-app-prod-01 Overview -->
+# 📸 Azure Application Gateway Evidence
 
 ![Azure Application Gateway](../../images/agw-app-prod-01.png)
 
-*Azure Application Gateway `agw-app-prod-01` deployed using Standard_v2 across Availability Zones 1, 2, and 3 with dedicated subnet `snet-appgw-01`.*
+*Azure Application Gateway `agw-app-prod-01` deployed using Standard_v2 in `vnet-spk-workloads-01/snet-appgw-01`, with a public frontend and Availability Zones 1, 2, and 3.*
 
 ---
 
-## 11. Load Balancer vs Application Gateway
+# ⚖️ Azure Load Balancer vs Application Gateway
 
 The project demonstrates two different Azure traffic distribution technologies.
 
@@ -280,72 +280,111 @@ The project demonstrates two different Azure traffic distribution technologies.
 | OSI Layer | Layer 4 | Layer 7 |
 | Primary Protocols | TCP / UDP | HTTP / HTTPS |
 | Routing Awareness | IP + Port | HTTP application traffic |
-| Health Monitoring | Health Probes | Backend Health Probes |
-| Internal Frontend | Supported | Supported depending on SKU/configuration |
+| Backend Health Monitoring | Health Probes | Backend Health Probes |
+| Private Frontend | Supported | Supported depending on configuration |
 | Public Frontend | Supported | Supported |
 | HTTP-aware Routing | No | Yes |
+| Path-based Routing | No | Yes |
+| Host-based Routing | No | Yes |
 | TLS Termination | No | Yes |
 | Web Application Firewall | No | Available with WAF SKU |
 
-Azure Load Balancer is appropriate when traffic needs to be distributed based primarily on transport-layer connectivity.
+Azure Load Balancer is appropriate when traffic needs to be distributed primarily according to transport-layer connectivity.
 
-Application Gateway is designed specifically for web application delivery and provides HTTP-aware capabilities unavailable in a Layer 4 Load Balancer.
-
----
-
-## 12. Combined Architecture
-
-The two services demonstrate different positions in an enterprise application delivery architecture.
-
-```text
-                    Azure
-                      |
-        +-------------+-------------+
-        |                           |
-        v                           v
- Layer 4 Distribution        Layer 7 Distribution
-        |                           |
-        v                           v
- Azure Load Balancer       Application Gateway
- lb-app-prod-01            agw-app-prod-01
-        |                           |
-      TCP/80                      HTTP/80
-        |                           |
-        +-------------+-------------+
-                      |
-                      v
-               Spoke Workloads
-```
-
-They were deployed independently during the lab to demonstrate their respective capabilities rather than being unnecessarily chained together.
+Application Gateway is designed for web application delivery and provides HTTP-aware capabilities that are unavailable with a Layer 4 Load Balancer.
 
 ---
 
-## 13. Security Considerations
+# 🧠 Architectural Decisions
 
-Several architectural decisions were incorporated into the implementation:
+## Why an Internal Load Balancer?
 
-- The Azure Load Balancer used an internal private frontend.
+The Load Balancer was configured with a private frontend because its purpose was to demonstrate internal workload distribution.
+
+This prevents unnecessary Internet exposure and provides an architecture suitable for internal applications and services.
+
+---
+
+## Why Application Gateway?
+
+Application Gateway was selected to demonstrate Layer 7 application delivery.
+
+While Azure Load Balancer distributes TCP and UDP connections, Application Gateway provides application-aware functionality specifically designed for HTTP and HTTPS workloads.
+
+---
+
+## Why a Dedicated Subnet?
+
+Application Gateway infrastructure was isolated in `snet-appgw-01` rather than being deployed alongside application workloads.
+
+This separation:
+
+- Provides cleaner network segmentation.
+- Separates application delivery infrastructure from compute.
+- Simplifies management.
+- Supports independent scaling.
+- Prevents unrelated workloads from sharing Application Gateway subnet capacity.
+
+---
+
+## Why Standard_v2?
+
+Standard_v2 was sufficient for demonstrating Application Gateway architecture and Layer 7 application delivery within the scope of the lab.
+
+A production Internet-facing application requiring web application firewall capabilities could instead use the WAF_v2 SKU.
+
+---
+
+# 🛡️ Security Considerations
+
+Several security principles were incorporated into the design:
+
+- Azure Load Balancer used a private frontend.
 - Backend workloads used private IP addressing.
 - Application Gateway was isolated in a dedicated subnet.
-- Workload traffic remained separated from Application Gateway infrastructure.
-- Network Security Groups were implemented at the workload subnet.
-- Public exposure was introduced only at the Application Gateway frontend required for the Standard_v2 lab deployment.
-- Backend workloads themselves did not require direct public IP addresses.
+- Workload and application delivery infrastructure remained separated.
+- Network Security Groups protected the workload subnet.
+- Public exposure was introduced at the Application Gateway frontend rather than directly on backend workloads.
+- The Standard_v2 lab deployment did not include Web Application Firewall functionality.
 
-This maintains separation between application delivery infrastructure and backend compute.
+This maintains separation between the public application delivery layer and private backend compute resources.
 
 ---
 
-## 14. Cost Management
+# 🔗 Relationship with the Existing Network Architecture
 
-Both Azure Load Balancer and Application Gateway were deployed as temporary validation resources.
+The load-balancing services complement the networking controls implemented throughout the project.
 
-After configuration and evidence collection were completed, the resources were removed.
+```text
+                    DmonTech Azure Network
+                            |
+          +-----------------+-----------------+
+          |                                   |
+          v                                   v
+ Internal Application                  Web Application
+          |                                   |
+          v                                   v
+Azure Load Balancer              Application Gateway
+lb-app-prod-01                    agw-app-prod-01
+          |                                   |
+          | Layer 4                           | Layer 7
+          v                                   v
+          +------------ Spoke Workloads ------+
+```
 
-This was particularly important for Application Gateway because maintaining application delivery infrastructure without an active workload would create unnecessary Azure consumption.
+They were deployed independently because each service demonstrates a different traffic distribution requirement.
 
-The project therefore followed the resource lifecycle:
+There is no architectural requirement to place Azure Load Balancer behind Application Gateway simply because both technologies exist in the environment.
+
+---
+
+# 💰 Cost Management
+
+Azure Load Balancer and Application Gateway were deployed as laboratory resources for configuration and architectural validation.
+
+Application delivery infrastructure can generate ongoing Azure consumption even when used only for demonstration purposes.
+
+The project therefore followed the same temporary-resource lifecycle used throughout the Azure lab:
 
 ```text
 Design
@@ -366,62 +405,67 @@ Document
 Remove Temporary Resource
 ```
 
-This allowed the architecture to be demonstrated while maintaining control over lab costs.
+This approach allows enterprise Azure technologies to be implemented and documented without maintaining unnecessary long-term laboratory costs.
 
 ---
 
-## 15. Validation Summary
+# ✅ Validation
 
-The following capabilities were implemented:
+The following configuration was successfully validated:
 
 | Capability | Status |
 |---|---|
 | Azure Standard Load Balancer | Completed |
-| Internal Frontend | Completed |
-| Private Frontend IP | Completed |
-| Backend Pool | Completed |
-| TCP Health Probe | Completed |
-| TCP Load Balancing Rule | Completed |
+| Internal Load Balancer Frontend | Completed |
+| Private Frontend `10.1.1.6` | Completed |
+| Backend Pool `be-app-01` | Completed |
+| Backend VM Association | Completed |
+| TCP/80 Health Probe | Completed |
+| TCP/80 Load Balancing Rule | Completed |
 | Azure Application Gateway | Completed |
 | Standard_v2 SKU | Completed |
-| Dedicated Application Gateway Subnet | Completed |
+| Dedicated `snet-appgw-01` Subnet | Completed |
 | Public Frontend | Completed |
-| HTTP Listener | Completed |
-| Backend Target | Completed |
-| Layer 4 Traffic Distribution Design | Completed |
-| Layer 7 Application Delivery Design | Completed |
+| Availability Zones 1, 2, 3 | Completed |
+| Integration with Spoke Network | Completed |
+| Layer 4 Architecture | Completed |
+| Layer 7 Architecture | Completed |
+
+The implementation validates the configuration and architecture of both Azure traffic distribution services.
 
 ---
 
-## 16. Lessons Learned
+# 📚 Lessons Learned
 
-Azure Load Balancer and Application Gateway solve different application delivery requirements and should not be treated as interchangeable services.
+Azure Load Balancer and Azure Application Gateway address different application delivery requirements and should not be treated as interchangeable services.
 
-Azure Load Balancer provides high-performance Layer 4 traffic distribution without understanding the application protocol.
+Azure Load Balancer operates at Layer 4 and provides high-performance TCP and UDP traffic distribution without interpreting application-layer content.
 
-Application Gateway operates at Layer 7 and provides web-specific routing capabilities based on HTTP and HTTPS traffic.
+Application Gateway operates at Layer 7 and provides web-specific functionality for HTTP and HTTPS applications.
 
 The implementation also demonstrated the importance of subnet planning. Application Gateway requires dedicated subnet capacity, meaning application delivery requirements should be considered during the initial VNet address-space design.
 
-Finally, application delivery services can represent significant ongoing cost in laboratory environments. Temporary deployment, validation, documentation, and cleanup provide a practical way to demonstrate these technologies while controlling cloud consumption.
+Using a private Load Balancer frontend also demonstrated how internal applications can benefit from traffic distribution without introducing unnecessary public exposure.
+
+Finally, temporary deployment and cleanup of higher-cost Azure services provides a practical way to gain implementation experience while maintaining control over laboratory consumption.
 
 ---
 
-## Result
+# 🏁 Result
 
-The DmonTech Azure environment successfully demonstrated both Layer 4 and Layer 7 traffic distribution.
+The DmonTech Azure environment successfully demonstrated both Layer 4 and Layer 7 application delivery architectures.
 
 The implementation included:
 
 - Azure Standard Internal Load Balancer.
 - Private frontend addressing.
-- Backend pools.
+- Backend pool configuration.
 - TCP health monitoring.
 - TCP load-balancing rules.
 - Azure Application Gateway Standard_v2.
 - Dedicated Application Gateway subnet.
-- HTTP listener and backend routing.
-- Availability Zone-aware Application Gateway deployment.
-- Integration with private Spoke workloads.
+- Public Application Gateway frontend.
+- Availability Zone-aware deployment.
+- Integration with the existing Spoke workload network.
 
-Together, these services demonstrate how Azure can provide different application delivery mechanisms depending on workload and networking requirements.
+Together, these services demonstrate how Azure provides different traffic distribution mechanisms depending on application requirements while maintaining separation between frontend application delivery infrastructure and backend workloads.

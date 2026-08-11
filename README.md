@@ -2,68 +2,121 @@
 
 ## 📌 Project Overview
 
-**DmonTech** is a Costa Rican manufacturing and engineering company with approximately 500 employees across 4 operational sites.
+**DmonTech** is a fictional Costa Rican manufacturing and engineering company with approximately **500 employees across four operational sites**.
 
-The organization currently relies on traditional on-premises infrastructure and is modernizing its IT environment through the adoption of **Microsoft Azure, Microsoft 365, Microsoft Entra ID, and Microsoft Intune**.
+The organization relies on traditional on-premises infrastructure and is modernizing its IT environment through the adoption of **Microsoft Azure, Microsoft 365, Microsoft Entra ID, and Microsoft Intune**.
 
-This project simulates the design and implementation of that modernization strategy, combining **Hybrid Identity, Zero Trust security, Hub-and-Spoke networking, endpoint management, Azure infrastructure, monitoring, backup, cost governance, and Infrastructure as Code (IaC).**
+This project simulates the design and implementation of that modernization strategy through a hands-on enterprise infrastructure lab combining:
 
-The environment was implemented as a hands-on enterprise lab and documented throughout this repository.
+- Hybrid Identity
+- Active Directory
+- Microsoft Intune
+- Zero Trust security
+- Azure Hub-and-Spoke networking
+- Secure compute and storage
+- Cloud security and SIEM
+- Monitoring and alerting
+- Backup and disaster recovery
+- Cost governance
+- PowerShell automation
+- Terraform Infrastructure as Code
+
+The environment was **designed, deployed, configured, validated, troubleshot, and documented** throughout this repository.
 
 ---
 
 ## 🎯 Strategic Objectives
 
-- **Hybrid Identity:** Integrate Active Directory Domain Services (AD DS) with Microsoft Entra ID using Entra Cloud Sync.
-- **Device Governance:** Manage enterprise endpoints using Microsoft Intune, compliance policies, and Windows Autopilot.
-- **Secure Hybrid Network:** Implement an Azure Hub-and-Spoke architecture with centralized traffic inspection through Azure Firewall.
-- **Zero Trust Security:** Apply Conditional Access, MFA, RBAC, BitLocker, Defender, NSGs, and private connectivity.
-- **Cloud Infrastructure:** Deploy secure Azure compute, networking, storage, monitoring, and recovery services.
+The DmonTech modernization initiative was designed around the following objectives:
+
+- **Hybrid Identity:** Integrate on-premises Active Directory with Microsoft Entra ID.
+- **Endpoint Governance:** Manage Windows endpoints through Microsoft Intune, compliance policies, configuration profiles, and security controls.
+- **Secure Hybrid Networking:** Implement an Azure Hub-and-Spoke architecture with centralized routing and security inspection.
+- **Zero Trust Security:** Apply MFA, Conditional Access, RBAC, endpoint compliance, encryption, network segmentation, and private connectivity.
+- **Cloud Infrastructure:** Deploy Azure compute, networking, storage, security, monitoring, and recovery services.
+- **Security Monitoring:** Establish centralized security visibility using Microsoft Defender for Cloud and Microsoft Sentinel.
 - **Infrastructure as Code:** Represent the core Azure architecture using Terraform.
-- **Operational Governance:** Implement Azure monitoring, backup validation, cost tracking, and budget controls.
+- **Automation:** Use PowerShell for Active Directory provisioning and endpoint management tasks.
+- **Operational Governance:** Implement monitoring, backup validation, cost analysis, and budget controls.
 
 ---
 
-## 🏗️ Architecture
+## ⭐ Key Technical Achievements
+
+The project includes hands-on implementation and validation of several enterprise infrastructure scenarios:
+
+- Built an on-premises **Active Directory environment with two Domain Controllers**.
+- Implemented organizational units, users, groups, DNS, DHCP, GPOs, Sites and Services, and AD replication.
+- Integrated on-premises identity with **Microsoft Entra ID**.
+- Validated **Hybrid Microsoft Entra Joined** Windows endpoints.
+- Implemented **Microsoft Intune automatic MDM enrollment**.
+- Applied endpoint compliance and configuration policies.
+- Implemented BitLocker, Microsoft Defender Antivirus, and Windows Firewall policies.
+- Designed and deployed an **Azure Hub-and-Spoke network architecture**.
+- Implemented **Azure Firewall** with centralized outbound routing using UDRs.
+- Configured **NSGs** for subnet-level network protection.
+- Configured the Azure side of a **Site-to-Site VPN architecture**.
+- Implemented **Azure Bastion and Private DNS** architecture.
+- Deployed and tested **Azure Load Balancer and Application Gateway**.
+- Implemented secure Azure Storage with **Private Endpoint connectivity**.
+- Configured **Azure Key Vault using Azure RBAC**.
+- Implemented governance using **Azure Policy**.
+- Configured **Microsoft Defender for Cloud**.
+- Deployed **Microsoft Sentinel** using Log Analytics.
+- Implemented Azure Monitor, Activity Log diagnostic settings, alerts, and Workbooks.
+- Performed an actual **Azure VM backup and restore test** using Azure Backup.
+- Implemented Azure Cost Analysis and monthly budget alerts.
+- Represented the core Azure architecture using **Terraform**.
+- Created PowerShell automation and troubleshooting scripts for Active Directory and Intune.
+
+---
+
+## 🏗️ Architecture Overview
 
 The project combines an on-premises Windows Server environment with Microsoft cloud services.
 
 ```text
-                    Microsoft Entra ID
-                           │
-                    Entra Cloud Sync
-                           │
-                           ▼
-              On-Premises Active Directory
-                 DC01             DC02
-                   │               │
-                   └───────┬───────┘
-                           │
-                    Hybrid Identity
-                           │
-                           ▼
-                    Microsoft Azure
-                           │
-                ┌──────────┴──────────┐
-                │                     │
-               HUB                  SPOKE
-                │                     │
-         Azure Firewall         Workload Subnet
-         VPN Gateway                  │
-         Central Routing             ├── Virtual Machine
-                │                    ├── NSG
-                └──── Peering ───────┼── UDR
-                                     └── Private Endpoint
-                                              │
-                                              ▼
-                                         Azure Storage
+                         Microsoft Entra ID
+                                │
+                         Hybrid Identity
+                                │
+                                ▼
+                  On-Premises Active Directory
+                     DC01             DC02
+                       │               │
+                       └───────┬───────┘
+                               │
+                               ▼
+                        Microsoft Azure
+                               │
+                  ┌────────────┴────────────┐
+                  │                         │
+                 HUB                      SPOKE
+                  │                         │
+          Azure Firewall              Workloads
+          VPN Gateway                     │
+          Azure Bastion                   ├── Virtual Machines
+          Central Routing                 ├── NSGs
+                  │                       ├── UDRs
+                  │                       ├── Load Balancer
+                  │                       ├── Application Gateway
+                  │                       │
+                  └────── Peering ────────┤
+                                          │
+                                          ▼
+                                   Private Endpoint
+                                          │
+                                          ▼
+                                     Azure Storage
 ```
+
+The Hub network centralizes shared connectivity and security services, while workload infrastructure remains isolated inside the Spoke network.
 
 ---
 
-## 🛠️ Tech Stack
+# 🛠️ Technology Stack
 
-### On-Premises Infrastructure
+## 🖥️ On-Premises Infrastructure
 
 - Windows Server 2022
 - Active Directory Domain Services
@@ -71,54 +124,109 @@ The project combines an on-premises Windows Server environment with Microsoft cl
 - DHCP
 - Group Policy
 - Active Directory Sites and Services
+- PowerShell
 
-### Cloud & Identity
+---
+
+## ☁️ Cloud & Identity
 
 - Microsoft Azure
 - Microsoft Entra ID
-- Microsoft Entra Cloud Sync
 - Microsoft 365
+- Hybrid Identity
 - Conditional Access
-- MFA
-- SSPR
-- RBAC
+- Multi-Factor Authentication
+- Self-Service Password Reset
+- Azure Role-Based Access Control
 
-### Endpoint Management
+---
+
+## 📱 Endpoint Management
 
 - Microsoft Intune
-- Windows Autopilot
+- Hybrid Microsoft Entra Join
+- Automatic MDM Enrollment
 - Compliance Policies
 - Configuration Profiles
 - BitLocker
-- Microsoft Defender
+- Microsoft Defender Antivirus
 - Windows Firewall
 
-### Azure Infrastructure
+---
+
+## 🌐 Azure Networking
 
 - Azure Virtual Networks
 - Hub-and-Spoke Networking
 - VNet Peering
 - Azure Firewall
-- Firewall Policy
-- VPN Gateway
-- Azure Bastion
-- Network Security Groups
+- Azure Firewall Policy
 - User-Defined Routes
-- Azure Virtual Machines
-- Azure Storage
-- Azure Files
-- Blob Storage
+- Network Security Groups
+- VPN Gateway
+- Local Network Gateway
+- Site-to-Site VPN configuration
+- Azure Bastion
+- Private DNS Zones
 - Private Endpoints
-- Private DNS
-- Azure Key Vault
+- Azure Load Balancer
+- Azure Application Gateway
+
+---
+
+## 💻 Compute & Storage
+
+- Azure Virtual Machines
+- Azure Storage Accounts
+- Blob Storage
+- Azure Files
+- Storage Lifecycle Management
+- Private Storage Connectivity
+
+---
+
+## 🔐 Security
+
 - Azure Policy
+- Azure Key Vault
+- Azure RBAC
 - Microsoft Defender for Cloud
+- Microsoft Sentinel
+- Conditional Access
+- MFA
+- BitLocker
+- Network Security Groups
+- Azure Firewall
+- Private Endpoints
+
+---
+
+## 📊 Monitoring & Recovery
+
 - Azure Monitor
+- Log Analytics Workspace
+- Activity Logs
+- Diagnostic Settings
+- Azure Monitor Alerts
+- Azure Workbooks
+- Microsoft Sentinel
 - Azure Backup
 - Recovery Services Vault
-- Azure Cost Management
+- VM Backup and Restore
 
-### IaC & Automation
+---
+
+## 💰 Cost Governance
+
+- Azure Cost Management
+- Cost Analysis
+- Azure Budgets
+- Actual-Cost Alerts
+- Resource Lifecycle Management
+
+---
+
+## ⚙️ Infrastructure as Code & Automation
 
 - Terraform
 - AzureRM Provider
@@ -128,24 +236,26 @@ The project combines an on-premises Windows Server environment with Microsoft cl
 
 ---
 
-## 🔐 Security Architecture
+# 🔐 Zero Trust Security Architecture
 
-The environment applies multiple security layers following Zero Trust principles:
+The environment applies multiple security layers instead of relying on a single security boundary.
 
 ```text
 Identity
    │
+   ├── Microsoft Entra ID
    ├── MFA
    ├── Conditional Access
-   └── Entra ID
+   └── RBAC
           │
           ▼
 Endpoint
    │
-   ├── Intune
-   ├── Compliance
+   ├── Microsoft Intune
+   ├── Compliance Policies
    ├── BitLocker
-   └── Defender
+   ├── Defender Antivirus
+   └── Windows Firewall
           │
           ▼
 Network
@@ -153,42 +263,162 @@ Network
    ├── Azure Firewall
    ├── NSGs
    ├── UDRs
+   ├── VPN Gateway
    └── Private Endpoints
           │
           ▼
-Data & Operations
+Data
    │
    ├── Secure Storage
+   ├── Azure Key Vault
+   └── Private Connectivity
+          │
+          ▼
+Operations
+   │
+   ├── Defender for Cloud
+   ├── Microsoft Sentinel
+   ├── Azure Monitor
    ├── Backup & Recovery
-   ├── Monitoring
    └── Cost Governance
 ```
 
+This architecture applies security controls across **identity, endpoints, networking, data, and operations**.
+
 ---
 
-## 💾 Backup & Recovery Validation
+# 🌐 Azure Networking Architecture
+
+A Hub-and-Spoke topology was implemented to separate shared infrastructure from production workloads.
+
+The Hub network provides centralized services including:
+
+- Azure Firewall
+- VPN Gateway
+- Azure Bastion
+- Centralized routing
+
+The Spoke environment contains production workloads and application delivery infrastructure.
+
+Traffic flow can be controlled through:
+
+```text
+Spoke Workload
+      │
+      ▼
+     UDR
+      │
+      ▼
+Azure Firewall
+      │
+      ▼
+External Destination
+```
+
+This architecture provides centralized security enforcement while maintaining workload isolation.
+
+---
+
+# 💾 Backup & Recovery Validation
 
 Azure Backup was implemented using a **Recovery Services Vault**.
 
-The project included an actual recovery test in which a protected Azure Virtual Machine was restored using a recovery point and the existing VM disks were successfully replaced.
+The project went beyond simply configuring backup protection.
 
-This validates both backup configuration and workload recoverability.
+An on-demand backup was executed for an Azure Virtual Machine, a recovery point was generated, and an actual restore operation was performed using:
+
+```text
+Replace Existing
+```
+
+The complete workflow was validated:
+
+```text
+Configure Backup
+      │
+      ▼
+Backup
+      │
+      ▼
+Recovery Point
+      │
+      ▼
+Restore
+      │
+      ▼
+Completed
+```
+
+This demonstrates **actual workload recoverability rather than backup configuration alone**.
 
 ---
 
-## 💰 Cost Governance
+# 🛡️ Security Monitoring
 
-Azure Cost Management was used to analyze infrastructure spending and identify high-cost services.
+Microsoft security services were integrated to establish centralized security visibility.
 
-A monthly budget was configured with notification thresholds to provide proactive cost visibility.
+The monitoring architecture includes:
 
-High-cost lab resources such as Azure Firewall, Bastion, VPN Gateway, and Virtual Machines were managed according to lab requirements to minimize unnecessary consumption.
+```text
+Azure Resources
+      │
+      ▼
+Activity Logs
+      │
+      ▼
+Log Analytics Workspace
+      │
+      ├────────► Azure Monitor
+      │
+      └────────► Microsoft Sentinel
+                       │
+                       ▼
+                Security Analysis
+```
+
+Microsoft Defender for Cloud provides cloud security posture management, while Microsoft Sentinel establishes the foundation for centralized SIEM capabilities.
 
 ---
 
-## ⚙️ Infrastructure as Code
+# 💰 Cost Governance
 
-The core Azure architecture was translated into Terraform.
+Azure Cost Management was incorporated into the project as part of the infrastructure lifecycle.
+
+Cost Analysis was used to identify consumption by Azure service.
+
+A monthly budget of:
+
+```text
+$50 USD
+```
+
+was configured with actual-cost notification thresholds at:
+
+```text
+80%  → $40
+100% → $50
+```
+
+High-cost resources were deployed when required for implementation and validation and removed when they were no longer necessary.
+
+Examples included:
+
+- Azure Firewall
+- Azure Bastion
+- VPN Gateway
+- Application Gateway
+- Load Balancer
+- Virtual Machine Scale Set
+- Temporary compute resources
+- Recovery infrastructure after validation
+
+This allowed enterprise Azure services to be demonstrated while maintaining control over laboratory cloud consumption.
+
+---
+
+# ⚙️ Infrastructure as Code
+
+The core Azure architecture was translated into **Terraform**.
 
 Terraform configuration includes:
 
@@ -222,7 +452,7 @@ Validation result:
 Success! The configuration is valid.
 ```
 
-Terraform implementation:
+Terraform implementation is available in:
 
 ```text
 /terraform
@@ -230,81 +460,162 @@ Terraform implementation:
 
 ---
 
-## 📂 Repository Structure
+# 🤖 PowerShell Automation
+
+PowerShell was used for infrastructure provisioning and endpoint troubleshooting.
+
+The repository includes:
+
+### `01_Build_AD_Structure.ps1`
+
+Automates initial Active Directory provisioning, including:
+
+- Organizational Units
+- Site-based OUs
+- Security Groups
+- Sample Users
+- Hybrid identity UPN suffix preparation
+
+### `02_Cleanup_Intune_Enrollment.ps1`
+
+Provides endpoint-side Intune enrollment troubleshooting by cleaning stale MDM enrollment artifacts.
+
+### `03_Force_MDM_UserCredential.ps1`
+
+Configures Windows automatic MDM enrollment settings using Microsoft Entra user credentials and validates the resulting configuration.
+
+PowerShell implementation is available in:
+
+```text
+/powershell
+```
+
+---
+
+# 📂 Repository Structure
 
 ```text
 Enterprise-Hybrid-Infrastructure/
 │
-├── docs/          # Technical implementation documentation
-├── diagrams/      # Architecture diagrams
-├── images/        # Deployment evidence and screenshots
-├── powershell/    # PowerShell automation
-├── scripts/       # Supporting scripts
-├── terraform/     # Infrastructure as Code
+├── docs/
+│   ├── 01-Active-Directory/
+│   ├── 02-Intune/
+│   ├── 03-Networking/
+│   ├── 04-Compute-Storage/
+│   ├── 05-Security/
+│   ├── 06-Monitoring-Backup/
+│   └── 07-Cost-Analysis/
+│
+├── diagrams/       # Architecture diagrams
+├── images/         # Deployment evidence and screenshots
+├── powershell/     # PowerShell automation and troubleshooting
+├── terraform/      # Infrastructure as Code
 │
 ├── .gitignore
 └── README.md
 ```
 
-Detailed implementation evidence and technical explanations are available inside the **`/docs`** directory.
+Detailed implementation procedures, architectural decisions, validation results, lessons learned, and deployment evidence are available inside the **`/docs`** directory.
 
 ---
 
-## 🗺️ Version Roadmap
+# 🗺️ Project Roadmap
 
-- **v0.1:** PHASE 0 — Planning, corporate profile, and repository framework.
-- **v0.2:** PHASE 1 — On-Premises Active Directory Infrastructure.
-- **v0.3:** PHASE 2 & 3 — Microsoft 365, Entra ID, Hybrid Identity & Zero Trust.
-- **v0.4:** PHASE 4 — Endpoint Governance & Microsoft Intune.
-- **v0.5:** PHASE 5, 6 & 7 — Azure Networking, Compute & Storage.
-- **v0.6:** PHASE 8, 9 & 10 — Security, Monitoring, Backup & Recovery.
-- **v1.0:** PHASE 11 & 12 — Terraform Infrastructure as Code & Cost Optimization. ✅
+| Phase | Implementation | Status |
+|---|---|---|
+| Phase 0 | Planning & Architecture | ✅ Completed |
+| Phase 1 | Active Directory Infrastructure | ✅ Completed |
+| Phase 2 | Microsoft 365 & Entra ID | ✅ Completed |
+| Phase 3 | Hybrid Identity & Zero Trust | ✅ Completed |
+| Phase 4 | Microsoft Intune | ✅ Completed |
+| Phase 5 | Azure Networking | ✅ Completed |
+| Phase 6 | Azure Compute & Storage | ✅ Completed |
+| Phase 7 | Azure Security | ✅ Completed |
+| Phase 8 | Monitoring & SIEM | ✅ Completed |
+| Phase 9 | Backup & Recovery | ✅ Completed |
+| Phase 10 | Cost Management | ✅ Completed |
+| Phase 11 | PowerShell Automation | ✅ Completed |
+| Phase 12 | Terraform Infrastructure as Code | ✅ Completed |
 
 ---
 
-## ✅ Project Status
+# ✅ Project Status
 
-**Core Infrastructure Implementation: Completed**
+## Core Infrastructure Implementation: **Completed**
 
 The project currently demonstrates:
 
-- Hybrid Active Directory and Entra ID integration
-- Microsoft Intune endpoint governance
-- Zero Trust access controls
-- Azure Hub-and-Spoke architecture
-- Centralized network security
-- Secure compute and storage
-- Private connectivity
-- Monitoring and governance
-- Backup and successful recovery validation
-- Cost management
-- Terraform Infrastructure as Code
+- [x] Active Directory Domain Services
+- [x] Multi-DC architecture
+- [x] DNS and DHCP
+- [x] Group Policy
+- [x] AD Sites and Services
+- [x] Hybrid identity
+- [x] Microsoft Entra ID
+- [x] Microsoft Intune
+- [x] Hybrid Microsoft Entra Join
+- [x] Automatic MDM Enrollment
+- [x] Endpoint compliance
+- [x] BitLocker policies
+- [x] Defender Antivirus policies
+- [x] Windows Firewall policies
+- [x] Conditional Access and MFA
+- [x] Azure Hub-and-Spoke networking
+- [x] Azure Firewall
+- [x] User-Defined Routes
+- [x] Network Security Groups
+- [x] VPN infrastructure
+- [x] Azure Bastion
+- [x] Private DNS
+- [x] Azure Load Balancer
+- [x] Azure Application Gateway
+- [x] Azure compute workloads
+- [x] Secure Azure Storage
+- [x] Private Endpoint connectivity
+- [x] Azure Policy
+- [x] Azure Key Vault
+- [x] Microsoft Defender for Cloud
+- [x] Microsoft Sentinel
+- [x] Azure Monitor
+- [x] Log Analytics
+- [x] Azure Backup
+- [x] Successful VM restore validation
+- [x] Azure Cost Management
+- [x] Azure Budget alerts
+- [x] PowerShell automation
+- [x] Terraform Infrastructure as Code
 
 ---
 
-## 🚀 Future Improvements
+# 🚀 Future Improvements
 
 Potential future extensions include:
 
-- Terraform remote state
-- CI/CD pipeline for infrastructure deployment
-- Expanded Log Analytics and Azure Monitor integration
-- Linux workloads
-- Containerized applications
-- Advanced Azure Firewall policies
-- Automated infrastructure testing
-- Additional PowerShell automation
+- Terraform remote state using Azure Storage.
+- CI/CD pipeline for Terraform validation and deployment.
+- Expanded Log Analytics queries and dashboards.
+- Advanced Microsoft Sentinel analytics rules.
+- Sentinel automation and Playbooks.
+- Linux workloads.
+- Containerized applications.
+- Advanced Azure Firewall policies.
+- Automated infrastructure testing.
+- Additional PowerShell automation.
+- Azure Monitor alert automation.
+- Expanded disaster recovery testing.
+- Standardized resource tagging and cost allocation.
+- Multi-environment Terraform architecture for development, testing, and production.
 
 ---
 
-## 👤 Author
+# 👤 Author
 
 **Angelo Solano**
 
-Microsoft Certified: Azure Administrator Associate (AZ-104)
+**Microsoft Certified: Azure Administrator Associate (AZ-104)**
 
-Cloud Infrastructure | Microsoft Azure | Microsoft Intune | Microsoft Entra ID | Active Directory | Terraform
+Cloud Infrastructure | Microsoft Azure | Microsoft Intune | Microsoft Entra ID | Active Directory | Terraform | PowerShell
 
 ---
 
-*Designed, implemented, validated, and documented as a hands-on enterprise infrastructure project aligned with Microsoft Azure administration and architecture practices.*
+*Designed, implemented, validated, troubleshot, and documented as a hands-on enterprise infrastructure project aligned with Microsoft Azure administration, hybrid cloud, security, and architecture practices.*
